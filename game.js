@@ -8,13 +8,14 @@
   const birthYearInput = document.querySelector("#birthYear");
   const birthYearUp = document.querySelector("#birthYearUp");
   const birthYearDown = document.querySelector("#birthYearDown");
-  const countrySelect = document.querySelector("#countrySelect");
+  const homeSelect = document.querySelector("#homeSelect");
   const genderSelect = document.querySelector("#genderSelect");
   const generatedNamePreview = document.querySelector("#generatedNamePreview");
   const ageLabel = document.querySelector("#ageLabel");
   const yearLabel = document.querySelector("#yearLabel");
   const nameLabel = document.querySelector("#nameLabel");
   const genderLabel = document.querySelector("#genderLabel");
+  const homeLabel = document.querySelector("#homeLabel");
   const stageLabel = document.querySelector("#stageLabel");
   const trackLabel = document.querySelector("#trackLabel");
   const futureLabel = document.querySelector("#futureLabel");
@@ -175,6 +176,16 @@
     contextChoice("震災ボランティアの夜行バスに乗る", "名前も知らない人のために泥をかき、人生の優先順位が静かに入れ替わる。", ["public", "journalist"], { trust: 3, mind: 1 }, "日本・震災後", { countries: ["jp"], stages: ["high", "twenties", "firstWork", "thirties", "middle"], minYear: 1995, maxYear: 2013 }),
     contextChoice("動画サイトでご当地ヒーローを始める", "手作りの衣装が粗いほど、知らない街の子どもたちが真似し始める。", ["media", "actor"], { charm: 2, fame: 2 }, "日本・ネット発信", { countries: ["jp"], stages: ["junior", "high", "twenties", "firstWork"], minYear: 2007, maxYear: 2025 }),
 
+    contextChoice("朝露の田んぼで苗箱を運ぶ", "祖父母の手つきを真似しているうちに、季節の機嫌を読む癖がつく。", ["agriculture", "business"], { body: 2, trust: 1 }, "実家・農家", { homes: ["farm"], stages: ["child", "junior"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("農協の掲示板で相場を見る", "数字の向こうに天気と人の暮らしがあると知り、商売の見方が変わる。", ["agriculture", "business", "public"], { mind: 2, trust: 1 }, "実家・農家", { homes: ["farm"], stages: ["high", "twenties", "firstWork"], minYear: 1960, maxYear: 2025 }),
+    contextChoice("父の定期券を借りて都心を見に行く", "改札を抜けた先のビル群が、退屈だと思っていた会社員人生を映画のセットに変える。", ["salaryman", "business"], { mind: 1, trust: 2 }, "実家・会社員家庭", { homes: ["salary"], stages: ["junior", "high"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("商店街の歳末セールで声を張る", "一声で人の足が止まる快感を覚え、広告と商売の境目がなくなる。", ["business", "media"], { charm: 2, trust: 1 }, "実家・商店", { homes: ["shop"], stages: ["child", "junior", "high"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("閉店後の店番ノートに物語を書く", "売上の横に書いた短い会話が、後の小説のいちばん大事な台詞になる。", ["writer", "business"], { mind: 2, charm: 1 }, "実家・商店", { homes: ["shop"], stages: ["junior", "high", "twenties"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("町工場の端材で謎の機械を作る", "失敗作の山から、発明と建築と芸術が同じ机に並び始める。", ["science", "architect", "artist"], { mind: 2, art: 1 }, "実家・町工場", { homes: ["factory"], stages: ["child", "junior", "high"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("役所の封筒を見て町の裏側を想像する", "地味な書類ほど誰かの生活に直結していると知り、社会の見方が変わる。", ["public", "teacher", "politics"], { trust: 2, mind: 1 }, "実家・公務員家庭", { homes: ["public"], stages: ["junior", "high", "twenties"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("朝市の手伝いで魚の値段を叫ぶ", "潮と声と現金のリズムが、遠くへ出る夢を妙に現実的にする。", ["business", "travel", "athlete"], { body: 2, charm: 1 }, "実家・漁師町", { homes: ["fishery"], stages: ["child", "junior", "high"], minYear: 1950, maxYear: 2025 }),
+    contextChoice("地元を出るか継ぐかで家族会議になる", "正しさではなく、誰を寂しくさせるかで進路が揺れる。", ["family", "business", "wander"], { trust: 2, freedom: 1 }, "実家・継ぐか出るか", { homes: ["farm", "shop", "factory", "fishery"], stages: ["high", "twenties", "firstWork"], minYear: 1950, maxYear: 2025 }),
+
     contextChoice("リトルリーグの外野で奇跡の送球をする", "芝生の匂いと歓声が、いつか大きな球場へ続く秘密の道になる。", ["baseball", "athlete"], { body: 2, fame: 1 }, "アメリカ・少年野球", { countries: ["us"], stages: ["child", "junior"], minYear: 1950, maxYear: 2025 }),
     contextChoice("公民権運動の記事で壁新聞を作る", "大人たちは眉をひそめるが、教室の後ろで誰かが小さく拍手する。", ["journalist", "politics"], { mind: 2, trust: 2 }, "アメリカ・公民権の時代", { countries: ["us"], stages: ["junior", "high"], minYear: 1960, maxYear: 1975 }),
     contextChoice("タイトルIXの奨学金を本気で狙う", "女子チームの古いユニフォームを着て、未来の契約書みたいにコートへ立つ。", ["athlete", "baseball", "politics"], { body: 3, trust: 1 }, "アメリカ・スポーツの扉", { countries: ["us"], genders: ["female", "neutral"], stages: ["high", "twenties"], minYear: 1972, maxYear: 1995 }),
@@ -267,6 +278,7 @@
     architect: ["人の記憶まで設計した建築家", "あなたの建物は、雨の日に誰かが立ち止まる場所として愛されました。"],
     salaryman: ["名刺の裏に夢を隠した会社員", "地味な会議と異動の連続にも、映画なら十分すぎるほどの起伏がありました。"],
     homemaker: ["家庭という小さな王国の脚本家", "表彰状は少なくても、あなたの段取りで何人もの人生が次の場面へ進みました。"],
+    agriculture: ["畑から未来を見た農業家", "季節に振り回されながらも、土と市場と人の胃袋をつなぐ仕事を物語にしました。"],
     soccer: ["ピッチの外から試合を動かした人", "ゴールを決めたのは別の誰かでも、その前の物語を整えたのはあなたでした。"],
     romance: ["恋で世界線を越えた人", "誰かを選ぶたび、住む町、言葉、仕事、そして自分の輪郭まで少しずつ変わりました。"],
     family: ["家族という長編映画を撮った人", "大事件よりも、食卓で交わした短い会話が人生の伏線になっていました。"]
@@ -296,6 +308,14 @@
       text: "謝るべきか、逃げるべきか、さらに書くべきか。ここで社会と自分の距離が一気に縮まります。",
       addCareers: { journalist: 2, politics: 1 },
       addStats: { mind: 1, fame: 1 }
+    },
+    {
+      stages: ["twenties", "firstWork", "thirties", "middle"],
+      careers: ["agriculture", "business", "public"],
+      title: "実家の土地をめぐる話し合いが始まる",
+      text: "継ぐのか、売るのか、別の形で残すのか。家族の歴史が仕事の選択に割り込んできます。",
+      addCareers: { agriculture: 2, business: 1, public: 1 },
+      addStats: { trust: 1, mind: 1 }
     },
     {
       stages: ["firstWork", "thirties", "middle"],
@@ -398,6 +418,7 @@
     architect: "建築家",
     salaryman: "会社員",
     homemaker: "家庭",
+    agriculture: "農業",
     soccer: "サッカー",
     romance: "恋愛",
     family: "家族"
@@ -406,6 +427,45 @@
     female: "女性として生きる",
     male: "男性として生きる",
     neutral: "ノンバイナリー / 自由"
+  };
+
+  const homeProfiles = {
+    salary: {
+      label: "会社員家庭",
+      opening: "朝の定期券、夕方のニュース、家計簿の数字が、安定と我慢の意味を教えてくれます。",
+      stats: { trust: 1, mind: 1 },
+      careers: { salaryman: 2, business: 1 }
+    },
+    farm: {
+      label: "農家",
+      opening: "田んぼの水音、軽トラの荷台、季節に逆らえない暮らしが、身体に時間を刻みます。",
+      stats: { body: 2, trust: 1 },
+      careers: { agriculture: 2, business: 1 }
+    },
+    shop: {
+      label: "商店",
+      opening: "レジの音、常連の世間話、閉店後のシャッターが、人の顔を読む力を育てます。",
+      stats: { charm: 1, trust: 1 },
+      careers: { business: 2, media: 1 }
+    },
+    factory: {
+      label: "町工場",
+      opening: "機械油の匂い、図面の端、親の手の傷が、ものづくりの誇りを近くに置きます。",
+      stats: { mind: 1, art: 1 },
+      careers: { science: 2, architect: 1 }
+    },
+    public: {
+      label: "公務員家庭",
+      opening: "きちんと並んだ書類、転勤の話、地域の行事が、社会を支える仕事を身近にします。",
+      stats: { trust: 2 },
+      careers: { public: 2, teacher: 1 }
+    },
+    fishery: {
+      label: "漁師町",
+      opening: "潮風、早朝の市場、荒れた海を読む大人たちが、遠くへ出る勇気を育てます。",
+      stats: { body: 2, freedom: 1 },
+      careers: { travel: 1, athlete: 1, business: 1 }
+    }
   };
 
   const countryProfiles = {
@@ -711,6 +771,9 @@
     if (rule.countries && !rule.countries.includes(game.country)) {
       return false;
     }
+    if (rule.homes && !rule.homes.includes(game.home)) {
+      return false;
+    }
     if (rule.genders && !rule.genders.includes(game.gender)) {
       return false;
     }
@@ -737,6 +800,9 @@
     let score = 0;
     if (rule.countries) {
       score += 6;
+    }
+    if (rule.homes) {
+      score += 7;
     }
     if (rule.genders) {
       score += 4;
@@ -819,7 +885,7 @@
   }
 
   function choicesForStage(stage, year, event) {
-    const seed = textHash(`${game.country}-${game.gender}-${game.birthYear}-${stage.id}-${year}`);
+    const seed = textHash(`${game.country}-${game.home}-${game.gender}-${game.birthYear}-${stage.id}-${year}`);
     const matched = dramaticChoiceRules
       .filter((option) => matchesRule(option, stage, year, event))
       .sort((a, b) => {
@@ -915,8 +981,9 @@
 
   function updateGeneratedProfile() {
     const birthYear = clamp(Number(birthYearInput.value) || 1988, 1935, 2020);
-    const profile = makeProfile(birthYear, countrySelect.value, genderSelect.value);
-    generatedNamePreview.textContent = `${profile.name}（${profile.countryLabel}・${profile.genderLabel}）`;
+    const profile = makeProfile(birthYear, "jp", genderSelect.value);
+    const home = selectedHomeProfile();
+    generatedNamePreview.textContent = `${profile.name}（${home.label}・${profile.genderLabel}）`;
   }
 
   function adjustBirthYear(delta) {
@@ -925,6 +992,18 @@
     const currentYear = clamp(Number(birthYearInput.value) || 1988, minYear, maxYear);
     birthYearInput.value = String(clamp(currentYear + delta, minYear, maxYear));
     updateGeneratedProfile();
+  }
+
+  function selectedHomeProfile() {
+    return homeProfiles[homeSelect.value] || homeProfiles.salary;
+  }
+
+  function mergeStats(baseStats, homeStats) {
+    const stats = { ...baseStats };
+    for (const [key, value] of Object.entries(homeStats || {})) {
+      stats[key] = clamp((stats[key] || 0) + value, 0, 14);
+    }
+    return stats;
   }
 
   function nearestEvent(year) {
@@ -944,17 +1023,20 @@
     event.preventDefault();
     const birthYear = clamp(Number(birthYearInput.value) || 1988, 1935, 2020);
     birthYearInput.value = String(birthYear);
-    const profile = makeProfile(birthYear, countrySelect.value, genderSelect.value);
+    const profile = makeProfile(birthYear, "jp", genderSelect.value);
+    const home = selectedHomeProfile();
     game = {
       birthYear,
       heroName: profile.name,
-      country: profile.countryKey,
-      countryLabel: profile.countryLabel,
+      country: "jp",
+      countryLabel: "日本",
+      home: homeSelect.value in homeProfiles ? homeSelect.value : "salary",
+      homeLabel: home.label,
       gender: profile.genderKey,
       genderLabel: profile.genderLabel,
       stageIndex: 0,
-      stats: { body: 4, art: 4, mind: 4, charm: 4, trust: 4, freedom: 4, fame: 0 },
-      careers: {},
+      stats: mergeStats({ body: 4, art: 4, mind: 4, charm: 4, trust: 4, freedom: 4, fame: 0 }, home.stats),
+      careers: { ...home.careers },
       log: []
     };
     startScreen.classList.add("hidden");
@@ -972,23 +1054,16 @@
     return game.birthYear + currentStage().age;
   }
 
-  function countryPerspective(event, year) {
-    const moods = {
-      jp: `日本で暮らす${game.heroName}には、ニュースと日常が同じ速度で近づいてきます。`,
-      us: `アメリカで育つ${game.heroName}には、世界の変化がテレビ、スポーツ、音楽を通じて届きます。`,
-      uk: `イギリスの街角では、古い伝統と新しい流行が同じニューススタンドに並んでいます。`,
-      fr: `フランスで暮らす${game.heroName}は、その出来事をカフェの会話と映画館のポスター越しに受け取ります。`,
-      br: `ブラジルの光の中では、世界の事件もサッカーと音楽と家族の話に混ざって響きます。`,
-      in: `インドで育つ${game.heroName}には、急に広がる未来と昔からの価値観が同時に迫ってきます。`
-    };
+  function homePerspective(event, year) {
+    const home = homeProfiles[game.home] || homeProfiles.salary;
     const tagMood = event.tags.includes("travel")
-      ? `${year}年の空気は、遠い場所へ行く口実を少しだけ増やしました。`
+      ? `${year}年の空気は、地元の外へ出る口実を少しだけ増やしました。`
       : event.tags.includes("public")
         ? `${year}年の空気は、誰かを支える仕事の重みを少しだけ増やしました。`
         : event.tags.includes("artist")
           ? `${year}年の空気は、表現する人に変な勇気を渡しました。`
           : `${year}年の空気は、選ばなかった道にも薄く光を当てています。`;
-    return `${moods[game.country] || moods.jp} ${tagMood}`;
+    return `日本の${home.label}で育つ${game.heroName}には、ニュースと日常が同じ速度で近づいてきます。${home.opening} ${tagMood}`;
   }
 
   function renderStage() {
@@ -1002,9 +1077,10 @@
     yearLabel.textContent = `${year}年`;
     nameLabel.textContent = game.heroName;
     genderLabel.textContent = game.genderLabel;
+    homeLabel.textContent = game.homeLabel;
     stageLabel.textContent = stage.label;
     historyTitle.textContent = `${event.year}年: ${event.title}`;
-    historyText.textContent = `${event.text} ${countryPerspective(event, year)}`;
+    historyText.textContent = `${event.text} ${homePerspective(event, year)}`;
     promptTitle.textContent = stage.prompt;
 
     const stageChoices = choicesForStage(stage, year, event);
@@ -1154,10 +1230,10 @@
       ? `時代の風、つまり「${event.title}」が妙に味方し、`
       : `「${event.title}」の空気は少し遠くで鳴っていましたが、`;
     const contextLine = option.context
-      ? `これは「${option.context}」だからこそ起きた、別の国では少し形を変えていた分岐です。`
+      ? `これは「${option.context}」だからこそ起きた、別の実家や町では少し形を変えていた分岐です。`
       : "";
     const fragments = [
-      `${game.countryLabel}で育つ${name}は${option.title}。${twist}${stage.label}の選択は思ったより大きな影を伸ばしました。`,
+      `${game.homeLabel}で育つ${name}は${option.title}。${twist}${stage.label}の選択は思ったより大きな影を伸ばしました。`,
       contextLine,
       `${option.detail} その話は数年後、なぜか別の街で「伝説っぽい噂」として語られます。`,
       `現実なら小さな出来事でも、この世界線では映画の第二幕の合図でした。`
@@ -1190,7 +1266,7 @@
     gameScreen.classList.add("hidden");
     resultScreen.classList.remove("hidden");
     endingTitle.textContent = ending[0];
-    endingText.textContent = `${game.countryLabel}で${game.birthYear}年に生まれた${game.heroName}は、歴史の横風を受けながら何度も別の自分を選びました。${ending[1]} ${supporting} 映画タイトルは『${makeMovieTitle(career)}』です。`;
+    endingText.textContent = `日本の${game.homeLabel}に${game.birthYear}年に生まれた${game.heroName}は、歴史の横風を受けながら何度も別の自分を選びました。${ending[1]} ${supporting} 映画タイトルは『${makeMovieTitle(career)}』です。`;
     drawPoster(career);
   }
 
@@ -1213,6 +1289,7 @@
       architect: "雨の日の駅舎",
       salaryman: "名刺の裏の脱走計画",
       homemaker: "台所から始まる革命",
+      agriculture: "土の匂いの未来予報",
       soccer: "ピッチ外の決勝点",
       romance: "国境を越えたラブレター",
       family: "食卓の長いエンドロール"
@@ -1224,7 +1301,7 @@
     if (!game) {
       return;
     }
-    const profile = `プロフィール: ${game.heroName} / ${game.birthYear}年生まれ / ${game.countryLabel} / ${game.genderLabel}`;
+    const profile = `プロフィール: ${game.heroName} / ${game.birthYear}年生まれ / 日本 / ${game.homeLabel} / ${game.genderLabel}`;
     const text = game.log
       .map((item) => `${item.year}年 ${item.age}歳 ${item.stage}: ${item.choice} / 背景: ${item.event}`)
       .join("\n");
@@ -1529,7 +1606,7 @@
     ctx.fillStyle = "rgba(255,244,221,0.92)";
     fillFittedText(ctx, game.heroName, width * 0.5, height * 0.75, width * 0.68, 20, 13, 900, "center");
     ctx.fillStyle = "rgba(159,228,220,0.9)";
-    fillFittedText(ctx, `${game.birthYear} / ${game.countryLabel} / ${careerLabels[career] || career}`, width * 0.5, height * 0.8, width * 0.68, 15, 11, 900, "center");
+    fillFittedText(ctx, `${game.birthYear} / ${game.homeLabel} / ${careerLabels[career] || career}`, width * 0.5, height * 0.8, width * 0.68, 15, 11, 900, "center");
   }
 
   function drawRays(ctx, width, height, progress) {
@@ -2040,7 +2117,7 @@
   birthYearInput.addEventListener("input", updateGeneratedProfile);
   birthYearUp.addEventListener("click", () => adjustBirthYear(1));
   birthYearDown.addEventListener("click", () => adjustBirthYear(-1));
-  countrySelect.addEventListener("change", updateGeneratedProfile);
+  homeSelect.addEventListener("change", updateGeneratedProfile);
   genderSelect.addEventListener("change", updateGeneratedProfile);
   nextButton.addEventListener("click", nextStage);
   restartButton.addEventListener("click", restart);
