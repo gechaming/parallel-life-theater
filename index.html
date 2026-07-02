@@ -27,7 +27,13 @@
           </div>
           <form class="birth-form" id="birthForm">
             <label for="birthYear">生まれ年</label>
-            <input id="birthYear" name="birthYear" type="number" min="1935" max="2020" value="1988" inputmode="numeric">
+            <div class="birth-year-control">
+              <input id="birthYear" name="birthYear" type="number" min="1935" max="2020" value="1988" inputmode="numeric">
+              <div class="birth-year-buttons" aria-label="生まれ年の調整">
+                <button class="year-step-button" id="birthYearUp" type="button" aria-label="生まれ年を1年増やす">▲</button>
+                <button class="year-step-button" id="birthYearDown" type="button" aria-label="生まれ年を1年減らす">▼</button>
+              </div>
+            </div>
 
             <label for="countrySelect">国</label>
             <select id="countrySelect" name="country">

@@ -6,6 +6,8 @@
   const resultScreen = document.querySelector("#resultScreen");
   const birthForm = document.querySelector("#birthForm");
   const birthYearInput = document.querySelector("#birthYear");
+  const birthYearUp = document.querySelector("#birthYearUp");
+  const birthYearDown = document.querySelector("#birthYearDown");
   const countrySelect = document.querySelector("#countrySelect");
   const genderSelect = document.querySelector("#genderSelect");
   const generatedNamePreview = document.querySelector("#generatedNamePreview");
@@ -915,6 +917,14 @@
     const birthYear = clamp(Number(birthYearInput.value) || 1988, 1935, 2020);
     const profile = makeProfile(birthYear, countrySelect.value, genderSelect.value);
     generatedNamePreview.textContent = `${profile.name}（${profile.countryLabel}・${profile.genderLabel}）`;
+  }
+
+  function adjustBirthYear(delta) {
+    const minYear = Number(birthYearInput.min) || 1935;
+    const maxYear = Number(birthYearInput.max) || 2020;
+    const currentYear = clamp(Number(birthYearInput.value) || 1988, minYear, maxYear);
+    birthYearInput.value = String(clamp(currentYear + delta, minYear, maxYear));
+    updateGeneratedProfile();
   }
 
   function nearestEvent(year) {
@@ -2028,6 +2038,8 @@
 
   birthForm.addEventListener("submit", beginGame);
   birthYearInput.addEventListener("input", updateGeneratedProfile);
+  birthYearUp.addEventListener("click", () => adjustBirthYear(1));
+  birthYearDown.addEventListener("click", () => adjustBirthYear(-1));
   countrySelect.addEventListener("change", updateGeneratedProfile);
   genderSelect.addEventListener("change", updateGeneratedProfile);
   nextButton.addEventListener("click", nextStage);
