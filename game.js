@@ -22,6 +22,7 @@
   const historyTitle = document.querySelector("#historyTitle");
   const historyText = document.querySelector("#historyText");
   const promptTitle = document.querySelector("#promptTitle");
+  const choiceArea = document.querySelector(".choice-area");
   const choicesEl = document.querySelector("#choices");
   const outcomePanel = document.querySelector("#outcomePanel");
   const outcomeTitle = document.querySelector("#outcomeTitle");
@@ -1022,7 +1023,22 @@
 
   function choicesForStage(stage, year, event) {
     const seed = textHash(`${game.country}-${game.home}-${game.gender}-${game.birthYear}-${stage.id}-${year}`);
-    const matched = dramaticChoiceRules
+    const usedTitles = new Set([
+      ...(game.log || []).map((item) => item.choice),
+      ...(game.offeredChoices || [])
+    ]);
+    const chosenTitles = new Set((game.log || []).map((item) => item.choice));
+    const uniqueByTitle = (items) => {
+      const seen = new Set();
+      return items.filter((option) => {
+        if (!option || seen.has(option.title) || usedTitles.has(option.title)) {
+          return false;
+        }
+        seen.add(option.title);
+        return true;
+      });
+    };
+    const matched = uniqueByTitle(dramaticChoiceRules
       .filter((option) => matchesRule(option, stage, year, event))
       .filter((option) => optionFitsTrajectory(option, stage, event))
       .sort((a, b) => {
@@ -1031,51 +1047,114 @@
           return scoreDiff;
         }
         return textHash(`${a.title}-${seed}`) - textHash(`${b.title}-${seed}`);
-      });
-    const contextLimit = 2;
-    const contextCount = Math.min(contextLimit, matched.length);
-    const contextChoices = matched.slice(0, contextCount);
-    const baseChoices = rotated(stage.choices, seed)
+      }));
+    const baseChoices = uniqueByTitle(rotated(stage.choices, seed)
       .filter((option) => matchesRule(option, stage, year, event))
       .filter((option) => optionFitsTrajectory(option, stage, event))
-      .filter((option) => !contextChoices.some((contextOption) => contextOption.title === option.title))
-      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage))
-      .slice(0, 4 - contextChoices.length);
+      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage)));
 
-    let result;
-    if (contextChoices.length === 0) {
-      result = baseChoices.slice(0, 4);
-    } else if (contextChoices.length === 1) {
-      result = [baseChoices[0], contextChoices[0], ...baseChoices.slice(1)].filter(Boolean).slice(0, 4);
-    } else {
-      result = [contextChoices[0], baseChoices[0], contextChoices[1], baseChoices[1], contextChoices[2]].filter(Boolean).slice(0, 4);
-    }
-
-    const fallbackChoices = rotated(fallbackChoicesForStage(stage), seed + 7)
+    const fallbackChoices = uniqueByTitle(rotated(fallbackChoicesForStage(stage), seed + 7)
       .filter((option) => optionFitsTrajectory(option, stage, event))
-      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage));
-    for (const option of fallbackChoices) {
-      if (result.length >= 4) {
-        break;
+      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage)));
+    const allCandidates = uniqueByTitle([...matched, ...baseChoices, ...fallbackChoices]);
+    const topPaths = topCareerEntries(3).map(([career]) => career);
+    const lastCareers = game.log[game.log.length - 1]?.careers || [];
+    const activeCareers = [...new Set([...topPaths, ...lastCareers])];
+    const home = homeProfiles[game.home] || homeProfiles.salary;
+    const isLinkedToPath = (option) => option.careers.some((career) => {
+      if (activeCareers.includes(career)) {
+        return true;
       }
-      if (!result.some((existing) => existing.title === option.title)) {
-        result.push(option);
-      }
-    }
-    if (result.length < 3) {
-      const rescueChoices = rotated([...matched, ...stage.choices, ...fallbackChoicesForStage(stage)], seed + 17)
-        .filter((option) => matchesRule(option, stage, year, event))
-        .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage));
-      for (const option of rescueChoices) {
-        if (result.length >= 4) {
-          break;
+      return activeCareers.some((activeCareer) => (careerLinks[activeCareer] || []).includes(career));
+    });
+    const isHomeOrEraPressure = (option) => {
+      const homeCareer = option.careers.some((career) => home.careers?.[career]);
+      const eraCareer = option.careers.some((career) => event.tags.includes(career));
+      return homeCareer || eraCareer || option.rule?.homes?.includes(game.home);
+    };
+    const sorted = (items) => items
+      .slice()
+      .sort((a, b) => {
+        const scoreDiff = trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage);
+        if (scoreDiff !== 0) {
+          return scoreDiff;
         }
-        if (!result.some((existing) => existing.title === option.title)) {
-          result.push(option);
-        }
+        return textHash(`${a.title}-${seed}`) - textHash(`${b.title}-${seed}`);
+      });
+
+    const continuityPool = sorted(allCandidates.filter((option) => stage.age < 13 || isLinkedToPath(option)));
+    const pivotPool = sorted(allCandidates.filter((option) => {
+      if (continuityPool[0]?.title === option.title) {
+        return false;
       }
+      return isHomeOrEraPressure(option) || !isLinkedToPath(option);
+    }));
+    const rescuePool = sorted(uniqueByTitle([...stage.choices, ...dramaticChoiceRules, ...fallbackChoicesForStage(stage)])
+      .filter((option) => matchesRule(option, stage, year, event)));
+    const lastResortPool = sorted([...stage.choices, ...dramaticChoiceRules, ...fallbackChoicesForStage(stage)]
+      .filter((option) => matchesRule(option, stage, year, event))
+      .filter((option) => !chosenTitles.has(option.title)));
+
+    const selected = [];
+    const addChoice = (option, mode) => {
+      if (!option || selected.some((existing) => existing.title === option.title)) {
+        return;
+      }
+      selected.push(enrichChoice(option, mode, stage, event));
+    };
+
+    addChoice(continuityPool[0] || sorted(allCandidates)[0] || rescuePool[0], "continue");
+    addChoice(pivotPool[0] || sorted(allCandidates).find((option) => option.title !== selected[0]?.title) || rescuePool.find((option) => option.title !== selected[0]?.title), "pivot");
+    if (selected.length < 2) {
+      addChoice(rescuePool.find((option) => option.title !== selected[0]?.title), selected.length === 0 ? "continue" : "pivot");
     }
-    return result;
+    if (selected.length < 2) {
+      addChoice(lastResortPool.find((option) => option.title !== selected[0]?.title), selected.length === 0 ? "continue" : "pivot");
+    }
+    return selected.slice(0, 2);
+  }
+
+  function enrichChoice(option, mode, stage, event) {
+    return {
+      ...option,
+      routeLabel: mode === "continue" ? "A いまの道を進む" : "B 境遇を越える",
+      routeHint: choiceRouteHint(option, mode, stage, event),
+      risk: choiceRiskText(option, mode)
+    };
+  }
+
+  function choiceRouteHint(option, mode, stage, event) {
+    const previous = game.log[game.log.length - 1];
+    if (mode === "continue" && previous) {
+      return `前の「${previous.choice}」から自然につながる道。`;
+    }
+    if (mode === "continue") {
+      return `${game.homeLabel}の空気から伸びる最初の道。`;
+    }
+    const eventCareer = option.careers.find((career) => event.tags.includes(career));
+    if (eventCareer) {
+      return `${event.title}の波に乗って、別の場所へ踏み出す道。`;
+    }
+    return `${game.homeLabel}で身についた癖を、あえて別方向へ使う道。`;
+  }
+
+  function choiceRiskText(option, mode) {
+    if (option.careers.some((career) => ["artist", "actor", "writer", "media"].includes(career))) {
+      return mode === "continue" ? "届かなければ、暮らしは少し不安定になる。" : "見られるほど、失敗も人前に残る。";
+    }
+    if (option.careers.some((career) => ["travel", "wander", "romance"].includes(career))) {
+      return mode === "continue" ? "遠くへ行くほど、戻る場所との距離も広がる。" : "大切な人や地元を置いていく痛みがある。";
+    }
+    if (option.careers.some((career) => ["public", "politics", "teacher"].includes(career))) {
+      return mode === "continue" ? "期待に応えるほど、自分の本音を後回しにする。" : "人のための選択が、自分の時間を削っていく。";
+    }
+    if (option.careers.some((career) => ["business", "salaryman", "agriculture", "shop"].includes(career))) {
+      return mode === "continue" ? "現実を選ぶほど、夢は具体的な責任になる。" : "家やお金の都合から逃げきれない。";
+    }
+    if (option.careers.some((career) => ["baseball", "athlete", "soccer"].includes(career))) {
+      return mode === "continue" ? "体が限界を迎えた時、次の居場所が必要になる。" : "勝てなければ、努力の理由を自分で作り直す。";
+    }
+    return mode === "continue" ? "進むほど、別の人生は少しずつ遠ざかる。" : "道を曲げるには、いま持っている安心を手放す。";
   }
 
   function characterStyle(age = currentStage().age, accent = "#4776b9", mood = "calm") {
@@ -1191,6 +1270,7 @@
       stats: mergeStats({ body: 4, art: 4, mind: 4, charm: 4, trust: 4, freedom: 4, fame: 0 }, home.stats),
       careers: { ...home.careers },
       log: [],
+      offeredChoices: [],
       lastPrimaryCareer: null
     };
     startScreen.classList.add("hidden");
@@ -1208,16 +1288,22 @@
     return game.birthYear + currentStage().age;
   }
 
+  function keepGameInView() {
+    requestAnimationFrame(() => {
+      gameScreen.scrollIntoView({ block: "start" });
+    });
+  }
+
   function homePerspective(event, year) {
     const home = homeProfiles[game.home] || homeProfiles.salary;
     const tagMood = event.tags.includes("travel")
-      ? `${year}年の空気は、地元の外へ出る口実を少しだけ増やしました。`
+      ? `${year}年、外へ出たい気持ちが少し強まります。`
       : event.tags.includes("public")
-        ? `${year}年の空気は、誰かを支える仕事の重みを少しだけ増やしました。`
+        ? `${year}年、誰かを支える仕事が近く見えます。`
         : event.tags.includes("artist")
-          ? `${year}年の空気は、表現する人に変な勇気を渡しました。`
-          : `${year}年の空気は、選ばなかった道にも薄く光を当てています。`;
-    return `日本の${home.label}で育つ${game.heroName}には、ニュースと日常が同じ速度で近づいてきます。${home.opening} ${tagMood}`;
+          ? `${year}年、表現する人の背中に風が吹きます。`
+          : `${year}年、別の道もまだ遠くで光っています。`;
+    return `${home.opening} ${tagMood}`;
   }
 
   function renderStage() {
@@ -1226,6 +1312,7 @@
     const event = nearestEvent(year);
 
     outcomePanel.classList.add("hidden");
+    choiceArea.classList.remove("hidden");
     choicesEl.classList.remove("hidden");
     ageLabel.textContent = `${stage.age}歳`;
     yearLabel.textContent = `${year}年`;
@@ -1235,23 +1322,29 @@
     stageLabel.textContent = stage.label;
     historyTitle.textContent = `${event.year}年: ${event.title}`;
     historyText.textContent = `${event.text} ${homePerspective(event, year)}`;
-    promptTitle.textContent = stage.prompt;
+    promptTitle.textContent = `${stage.prompt} 二つの道から選ぶ。`;
 
     const stageChoices = choicesForStage(stage, year, event);
     game.currentChoices = stageChoices;
+    game.offeredChoices.push(...stageChoices.map((option) => option.title));
     choicesEl.innerHTML = "";
     for (const [index, option] of stageChoices.entries()) {
       const button = document.createElement("button");
       button.className = "choice-card";
       button.type = "button";
-      const context = option.context ? `<em class="choice-context">${option.context}</em>` : "";
-      button.innerHTML = `${context}<strong>${option.title}</strong><span>${option.detail}</span>${statPreview(option)}`;
+      button.innerHTML = `
+        <em class="choice-route">${option.routeLabel || (index === 0 ? "A いまの道を進む" : "B 境遇を越える")}</em>
+        <strong>${option.title}</strong>
+        <span>${option.routeHint || option.detail}</span>
+        ${choicePreview(option)}
+      `;
       button.addEventListener("click", () => choose(index));
       choicesEl.appendChild(button);
     }
 
     renderInfluence(stageChoices);
     drawLifeCanvas();
+    keepGameInView();
   }
 
   function renderInfluence(stageChoices = []) {
@@ -1263,24 +1356,15 @@
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
     trackLabel.textContent = careerEntries.length > 0
-      ? careerEntries.map(([career, score]) => `${careerLabels[career] || career} ${score}`).join(" / ")
+      ? careerEntries.map(([career]) => careerLabels[career] || career).join(" / ")
       : "まだ白紙";
 
-    const doors = [];
-    for (const option of stageChoices) {
-      for (const career of option.careers) {
-        const label = careerLabels[career] || career;
-        if (!doors.includes(label)) {
-          doors.push(label);
-        }
-      }
-    }
-    futureLabel.textContent = doors.length > 0
-      ? doors.slice(0, 5).join("・")
-      : "最初の選択で扉が変わる";
+    futureLabel.textContent = stageChoices.length >= 2
+      ? `${stageChoices[0].title} / ${stageChoices[1].title}`
+      : "次の選択で道が決まる";
   }
 
-  function statPreview(option) {
+  function choicePreview(option) {
     const labels = {
       body: "体力",
       art: "表現",
@@ -1290,10 +1374,14 @@
       freedom: "自由",
       fame: "名声"
     };
-    const chips = Object.entries(option.stats)
-      .map(([key, value]) => `<span class="stat-chip">${labels[key]} +${value}</span>`)
-      .join("");
-    return `<div class="stat-row">${chips}</div>`;
+    const gains = Object.entries(option.stats)
+      .slice(0, 2)
+      .map(([key, value]) => `${labels[key]}+${value}`)
+      .join(" / ");
+    return `
+      <small class="choice-impact">得るもの: ${gains || "新しい視点"}</small>
+      <small class="choice-risk">リスク: ${option.risk || choiceRiskText(option, "pivot")}</small>
+    `;
   }
 
   function choose(choiceIndex) {
@@ -1324,6 +1412,7 @@
       year,
       stage: stage.label,
       choice: option.title,
+      routeLabel: option.routeLabel,
       event: event.title,
       primaryCareer,
       careers: option.careers.slice(),
@@ -1331,6 +1420,7 @@
     });
     game.lastPrimaryCareer = primaryCareer;
 
+    choiceArea.classList.add("hidden");
     choicesEl.classList.add("hidden");
     outcomePanel.classList.remove("hidden");
     outcomeTitle.textContent = result.title;
@@ -1338,6 +1428,7 @@
     renderInfluence(game.currentChoices || []);
     renderFutureAfterChoice();
     drawLifeCanvas(option, synergy);
+    keepGameInView();
   }
 
   function renderFutureAfterChoice() {
@@ -1350,8 +1441,8 @@
       .slice(0, 3)
       .map(([career]) => careerLabels[career] || career);
     futureLabel.textContent = doors.length > 0
-      ? `${doors.join("・")}の扉が近づく`
-      : "次の時代で扉が変わる";
+      ? `${doors.join(" / ")}へ物語が寄っていく`
+      : "次の時代で道が変わる";
   }
 
   function applyTurningPoint(stage, option, event) {
@@ -1391,28 +1482,22 @@
       .slice()
       .sort((a, b) => (game.careers[b] || 0) - (game.careers[a] || 0))[0] || option.careers[0];
     const pathLabel = careerLabels[primaryCareer] || primaryCareer;
-    const topPaths = topCareerEntries(2).map(([career]) => careerLabels[career] || career);
     const bridge = previous
-      ? `前の時代の「${previous.choice}」で濃くなった${careerLabels[previous.primaryCareer] || previous.primaryCareer}の線が、ここで${pathLabel}の選択に接続します。`
-      : `${game.homeLabel}の空気が、最初の${pathLabel}への傾きを作りました。`;
-    const twist = synergy
-      ? `同じ頃の「${event.title}」が追い風になり、`
-      : `「${event.title}」の時代背景は直接の答えではありませんでしたが、`;
-    const contextLine = option.context
-      ? `「${option.context}」という条件があるので、この出来事は急な偶然ではなく、育った場所から伸びた分岐です。`
-      : "";
-    const consequence = careerConsequences[primaryCareer] || "この選択は、後の場面で別の肩書きに姿を変えて戻ってきます。";
-    const nextDoor = topPaths.length > 0
-      ? `いま太い線は ${topPaths.join(" / ")}。次の時代では、この線から外れる選択ほど大きな代償を持ちます。`
-      : "まだ太い線はありません。だからこそ、次の選択で人生の重心が大きく動きます。";
+      ? `あの頃の「${previous.choice}」で覚えた感覚が、時間をおいて胸の奥から戻ってきます。`
+      : `${game.homeLabel}の毎日は狭くも温かく、外の世界への憧れを少しずつ育てていました。`;
+    const eraLine = synergy
+      ? `街では「${event.title}」の話題が続き、${name}の背中を押すように空気がざわついていました。`
+      : `世の中では「${event.title}」が語られていましたが、${name}にとって大事だったのは目の前の小さな決断でした。`;
+    const consequence = careerConsequences[primaryCareer] || "その小さな決断は、あとで思わぬ肩書きに姿を変えます。";
+    const risk = option.risk || choiceRiskText(option, "pivot");
     const fragments = [
-      `${game.homeLabel}で育つ${name}は「${option.title}」を選びました。${bridge}`,
-      contextLine,
-      `${twist}${option.detail}`,
-      `${consequence} ${nextDoor}`
+      `${name}は「${option.title}」を選びました。${bridge}`,
+      `${eraLine} ${option.detail}`,
+      `${pathLabel}へ向かう景色は濃くなります。けれど、${risk}`,
+      consequence
     ].filter(Boolean);
     return {
-      title: synergy ? "時代と選択が噛み合った" : "選択が次の理由を作った",
+      title: synergy ? "時代の波に乗った" : "小さな決断が残った",
       text: fragments.join("\n\n")
     };
   }
@@ -1490,10 +1575,11 @@
     startScreen.classList.remove("hidden");
     gameScreen.classList.add("hidden");
     resultScreen.classList.add("hidden");
+    choiceArea.classList.remove("hidden");
     outcomePanel.classList.add("hidden");
     if (trackLabel && futureLabel) {
       trackLabel.textContent = "まだ白紙";
-      futureLabel.textContent = "最初の選択で扉が変わる";
+      futureLabel.textContent = "最初の選択で道が分かれる";
     }
     restartButton.classList.add("hidden");
     drawStartCanvas();
@@ -1535,32 +1621,9 @@
     ctx.fillStyle = "rgba(244,194,96,0.18)";
     fillFittedText(ctx, String(year), width * 0.04, height * 0.52, width * 0.5, clamp(width * 0.16, 54, 118), 34, 900);
 
-    drawChoiceConstellation(ctx, width, height);
-
-    const lineY = height * 0.83;
-    ctx.strokeStyle = "rgba(244,194,96,0.36)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(30, lineY);
-    ctx.lineTo(width - 30, lineY);
-    ctx.stroke();
-
-    for (let i = 0; i < stages.length; i += 1) {
-      const x = 30 + (width - 60) * (i / (stages.length - 1));
-      const active = i === game.stageIndex;
-      const done = i < game.stageIndex;
-      ctx.fillStyle = active ? "#f4c260" : done ? "#4ba3a0" : "rgba(255,244,221,0.52)";
-      ctx.strokeStyle = active ? "#fff1bf" : "rgba(8,7,10,0.7)";
-      ctx.lineWidth = active ? 4 : 2;
-      ctx.beginPath();
-      ctx.arc(x, lineY, active ? 13 : 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
     const avatarX = width < 520 ? width * 0.68 : width * 0.72;
-    const avatarY = height * 0.55;
-    const avatarScale = width < 520 ? 1.18 : 1.52;
+    const avatarY = height * 0.56;
+    const avatarScale = width < 520 ? 0.98 : 1.24;
     drawPortraitSpotlight(ctx, avatarX, avatarY, width, height);
     drawPhotoPortrait(ctx, avatarX, avatarY, characterStyle(stage.age, selectedOption ? "#f4c260" : "#4ba3a0", selectedOption ? "bright" : "calm"), avatarScale);
 
@@ -1574,7 +1637,7 @@
       ctx.fillStyle = "#fff1cc";
       fillFittedText(ctx, selectedOption.title, 40, height * 0.15 + 34, panelWidth - 36, 18);
       ctx.fillStyle = synergy ? "#f4c260" : "#9fe4dc";
-      fillFittedText(ctx, synergy ? "史実の波に乗った選択" : "静かに分岐した選択", 40, height * 0.15 + 62, panelWidth - 36, 13, 11, 900);
+      fillFittedText(ctx, selectedOption.routeLabel || (synergy ? "時代の波に乗った" : "静かに分岐した"), 40, height * 0.15 + 62, panelWidth - 36, 13, 11, 900);
       ctx.fillStyle = "rgba(255,244,221,0.7)";
       fillFittedText(ctx, careerSummaryText(), 40, height * 0.15 + 84, panelWidth - 36, 12, 10, 800);
     }

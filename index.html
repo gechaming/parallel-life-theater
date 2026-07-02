@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>パラレル人生シアター</title>
-    <link rel="stylesheet" href="styles.css?v=20260702-depth-flashback">
+    <link rel="stylesheet" href="styles.css?v=20260703-two-path">
   </head>
   <body>
     <main class="app-shell">
@@ -98,8 +98,8 @@
             <strong id="trackLabel">まだ白紙</strong>
           </div>
           <div>
-            <span>次に開きやすい未来</span>
-            <strong id="futureLabel">最初の選択で扉が変わる</strong>
+            <span>この場面の二択</span>
+            <strong id="futureLabel">最初の選択で道が分かれる</strong>
           </div>
         </section>
 
@@ -111,14 +111,14 @@
 
         <section class="choice-area" aria-label="life choices">
           <div class="choice-heading">
-            <p class="section-label">選択</p>
-            <h2 id="promptTitle">この時代、何を選ぶ？</h2>
+            <p class="section-label">分岐</p>
+            <h2 id="promptTitle">この時代、どちらへ進む？</h2>
           </div>
           <div class="choices" id="choices"></div>
         </section>
 
         <section class="outcome-panel hidden" id="outcomePanel" aria-live="polite">
-          <p class="section-label">その後</p>
+          <p class="section-label">場面の続き</p>
           <h2 id="outcomeTitle">運命が少し傾いた</h2>
           <p id="outcomeText"></p>
           <button class="primary-button" id="nextButton" type="button">次の時代へ</button>
@@ -139,6 +139,6 @@
       </section>
     </main>
 
-    <script src="game.js?v=20260702-depth-flashback"></script>
+    <script src="game.js?v=20260703-two-path"></script>
   </body>
 </html>
