@@ -36,6 +36,18 @@
   const posterCanvas = document.querySelector("#posterCanvas");
   const lifeCtx = lifeCanvas.getContext("2d");
   const posterCtx = posterCanvas.getContext("2d");
+  const portraitSheet = new Image();
+  let portraitSheetReady = false;
+  portraitSheet.addEventListener("load", () => {
+    portraitSheetReady = true;
+    if (game && !gameScreen.classList.contains("hidden")) {
+      drawLifeCanvas();
+    }
+    if (game && !resultScreen.classList.contains("hidden")) {
+      drawPoster(topCareer());
+    }
+  });
+  portraitSheet.src = "assets/portrait-sheet.png?v=20260702-depth";
 
   const historyEvents = [
     { year: 1945, title: "終戦", text: "日本は戦後の再出発を迎え、暮らしも価値観も大きく組み替えられていきました。", tags: ["public", "writer", "politics"] },
@@ -468,6 +480,54 @@
     }
   };
 
+  const careerLinks = {
+    baseball: ["athlete", "soccer", "teacher", "media"],
+    athlete: ["baseball", "soccer", "teacher", "public"],
+    artist: ["actor", "media", "writer", "architect"],
+    politics: ["public", "journalist", "business"],
+    public: ["politics", "teacher", "salaryman", "homemaker"],
+    writer: ["journalist", "media", "teacher", "romance"],
+    actor: ["artist", "media", "romance"],
+    wander: ["travel", "writer", "romance"],
+    travel: ["wander", "romance", "writer", "media"],
+    media: ["artist", "actor", "writer", "business"],
+    business: ["salaryman", "media", "agriculture", "shop"],
+    journalist: ["writer", "politics", "media"],
+    science: ["architect", "teacher", "business"],
+    teacher: ["public", "writer", "athlete", "family"],
+    architect: ["science", "artist", "public", "business"],
+    salaryman: ["business", "public", "romance", "family"],
+    homemaker: ["family", "public", "writer"],
+    agriculture: ["business", "public", "family"],
+    soccer: ["athlete", "teacher", "media"],
+    romance: ["family", "travel", "writer", "artist"],
+    family: ["homemaker", "teacher", "public", "romance"]
+  };
+
+  const careerConsequences = {
+    baseball: "体で覚えた勝負勘は、あとで教える側や支える側へ形を変えます。",
+    athlete: "競技そのものより、限界を知った経験が次の場所で効いてきます。",
+    artist: "表現の癖は、恋愛にも仕事にも逃げ道ではなく武器として残ります。",
+    politics: "人前で言葉を選ぶ経験が、地域や会社の面倒な場面で効いてきます。",
+    public: "誰かの生活を支える目線が、派手ではないけれど長い信用になります。",
+    writer: "書き残す癖が、選ばなかった人生まであとで回収していきます。",
+    actor: "見られる怖さを知ったことで、普段の沈黙まで芝居の一部になります。",
+    wander: "遠回りは職歴には書きにくいけれど、決断の早さだけは育てます。",
+    travel: "外へ出た記憶が、地元を見る目を少しだけ冷静にします。",
+    media: "誰かに届く形へ整える力が、時代が変わっても残ります。",
+    business: "損得を読む目が、人間関係の貸し借りまで見抜くようになります。",
+    journalist: "小さな違和感を見逃さない癖が、後の大きな選択を救います。",
+    science: "仕組みを分解する癖が、人生の失敗まで実験として扱わせます。",
+    teacher: "教える側へ回った経験が、自分自身のやり直し方も変えます。",
+    architect: "場所を作る視点が、人との距離や家族の形まで考え直させます。",
+    salaryman: "組織の中で我慢した時間が、後に現実的な交渉力になります。",
+    homemaker: "暮らしを回す段取りが、表に出ない人生の主導権になります。",
+    agriculture: "季節と家族に合わせる生活が、派手な夢にも足場を作ります。",
+    soccer: "ピッチを外から見る経験が、誰かを勝たせる仕事へつながります。",
+    romance: "誰かを選ぶことが、住む場所と仕事の優先順位を静かに変えます。",
+    family: "家族の都合は制約ではなく、物語を深くする伏線になります。"
+  };
+
   const countryProfiles = {
     jp: {
       label: "日本",
@@ -822,6 +882,82 @@
     return score;
   }
 
+  function topCareerEntries(limit = 3) {
+    return Object.entries(game?.careers || {})
+      .filter(([, score]) => score > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit);
+  }
+
+  function linkedMomentum(career) {
+    return (careerLinks[career] || []).reduce((best, linkedCareer) => {
+      return Math.max(best, (game?.careers?.[linkedCareer] || 0) * 0.55);
+    }, 0);
+  }
+
+  function trajectoryScore(option, event, stage) {
+    const home = homeProfiles[game.home] || homeProfiles.salary;
+    let score = ruleScore(option, event);
+    let direct = 0;
+    let linked = 0;
+    for (const career of option.careers) {
+      direct += game.careers[career] || 0;
+      linked += linkedMomentum(career);
+      if (home.careers?.[career]) {
+        score += home.careers[career] * 1.5;
+      }
+      if (event.tags.includes(career)) {
+        score += 2;
+      }
+    }
+    score += direct * 2.6 + linked;
+    if (stage.age >= 25 && direct === 0 && linked < 2) {
+      score -= 6;
+    }
+    if (option.context?.startsWith("実家")) {
+      score += 4;
+    }
+    return score;
+  }
+
+  function optionFitsTrajectory(option, stage, event) {
+    if (stage.age < 20) {
+      return true;
+    }
+    const rule = option.rule || {};
+    if (rule.anyCareer && careerScore(rule.anyCareer) >= (rule.minScore || 1)) {
+      return true;
+    }
+    if (rule.homes && rule.homes.includes(game.home) && stage.age <= 25) {
+      return true;
+    }
+
+    const direct = option.careers.reduce((total, career) => total + (game.careers[career] || 0), 0);
+    const linked = option.careers.reduce((total, career) => total + linkedMomentum(career), 0);
+    const home = homeProfiles[game.home] || homeProfiles.salary;
+    const homeRoot = option.careers.some((career) => home.careers?.[career]);
+
+    if (direct >= 2 || linked >= 3) {
+      return true;
+    }
+    if (stage.age <= 25 && homeRoot && direct >= 1) {
+      return true;
+    }
+    if (option.careers.includes("romance") && (stage.age <= 25 || (game.careers.romance || 0) >= 2 || game.stats.charm >= 7)) {
+      return true;
+    }
+    if ((option.careers.includes("family") || option.careers.includes("homemaker")) && (game.stats.trust >= 7 || careerScore(["romance", "family", "homemaker"]) >= 2)) {
+      return true;
+    }
+    if (option.careers.includes("teacher") && game.stats.trust >= 7 && (game.stats.mind >= 6 || careerScore(["public", "writer", "athlete"]) >= 3)) {
+      return true;
+    }
+    if (option.careers.includes("architect") && (game.home === "factory" || careerScore(["architect", "science", "artist"]) >= 4)) {
+      return true;
+    }
+    return trajectoryScore(option, event, stage) >= (stage.age >= 35 ? 4 : 3);
+  }
+
   function rotated(items, seed) {
     if (items.length === 0) {
       return [];
@@ -888,20 +1024,22 @@
     const seed = textHash(`${game.country}-${game.home}-${game.gender}-${game.birthYear}-${stage.id}-${year}`);
     const matched = dramaticChoiceRules
       .filter((option) => matchesRule(option, stage, year, event))
+      .filter((option) => optionFitsTrajectory(option, stage, event))
       .sort((a, b) => {
-        const scoreDiff = ruleScore(b, event) - ruleScore(a, event);
+        const scoreDiff = trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage);
         if (scoreDiff !== 0) {
           return scoreDiff;
         }
         return textHash(`${a.title}-${seed}`) - textHash(`${b.title}-${seed}`);
       });
-    const contextLimit = stage.age >= 20 ? 3 : 2;
+    const contextLimit = 2;
     const contextCount = Math.min(contextLimit, matched.length);
     const contextChoices = matched.slice(0, contextCount);
     const baseChoices = rotated(stage.choices, seed)
       .filter((option) => matchesRule(option, stage, year, event))
+      .filter((option) => optionFitsTrajectory(option, stage, event))
       .filter((option) => !contextChoices.some((contextOption) => contextOption.title === option.title))
-      .sort((a, b) => ruleScore(b, event) - ruleScore(a, event))
+      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage))
       .slice(0, 4 - contextChoices.length);
 
     let result;
@@ -913,13 +1051,28 @@
       result = [contextChoices[0], baseChoices[0], contextChoices[1], baseChoices[1], contextChoices[2]].filter(Boolean).slice(0, 4);
     }
 
-    const fallbackChoices = rotated(fallbackChoicesForStage(stage), seed + 7);
+    const fallbackChoices = rotated(fallbackChoicesForStage(stage), seed + 7)
+      .filter((option) => optionFitsTrajectory(option, stage, event))
+      .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage));
     for (const option of fallbackChoices) {
       if (result.length >= 4) {
         break;
       }
       if (!result.some((existing) => existing.title === option.title)) {
         result.push(option);
+      }
+    }
+    if (result.length < 3) {
+      const rescueChoices = rotated([...matched, ...stage.choices, ...fallbackChoicesForStage(stage)], seed + 17)
+        .filter((option) => matchesRule(option, stage, year, event))
+        .sort((a, b) => trajectoryScore(b, event, stage) - trajectoryScore(a, event, stage));
+      for (const option of rescueChoices) {
+        if (result.length >= 4) {
+          break;
+        }
+        if (!result.some((existing) => existing.title === option.title)) {
+          result.push(option);
+        }
       }
     }
     return result;
@@ -1037,7 +1190,8 @@
       stageIndex: 0,
       stats: mergeStats({ body: 4, art: 4, mind: 4, charm: 4, trust: 4, freedom: 4, fame: 0 }, home.stats),
       careers: { ...home.careers },
-      log: []
+      log: [],
+      lastPrimaryCareer: null
     };
     startScreen.classList.add("hidden");
     resultScreen.classList.add("hidden");
@@ -1155,6 +1309,9 @@
     for (const career of option.careers) {
       game.careers[career] = (game.careers[career] || 0) + 2 + (synergy ? 1 : 0);
     }
+    const primaryCareer = option.careers
+      .slice()
+      .sort((a, b) => (game.careers[b] || 0) - (game.careers[a] || 0))[0] || option.careers[0];
 
     const result = makeOutcome(stage, option, event, synergy);
     const turningPoint = applyTurningPoint(stage, option, event);
@@ -1168,8 +1325,11 @@
       stage: stage.label,
       choice: option.title,
       event: event.title,
+      primaryCareer,
+      careers: option.careers.slice(),
       text: result.text
     });
+    game.lastPrimaryCareer = primaryCareer;
 
     choicesEl.classList.add("hidden");
     outcomePanel.classList.remove("hidden");
@@ -1202,7 +1362,7 @@
       if (!rule.stages.includes(stage.id)) {
         return false;
       }
-      return rule.careers.some((career) => option.careers.includes(career) || (game.careers[career] || 0) >= 3 || event.tags.includes(career));
+      return rule.careers.some((career) => option.careers.includes(career) || (game.careers[career] || 0) >= 4);
     });
     if (candidates.length === 0) {
       return null;
@@ -1226,21 +1386,34 @@
 
   function makeOutcome(stage, option, event, synergy) {
     const name = game.heroName;
+    const previous = game.log[game.log.length - 1];
+    const primaryCareer = option.careers
+      .slice()
+      .sort((a, b) => (game.careers[b] || 0) - (game.careers[a] || 0))[0] || option.careers[0];
+    const pathLabel = careerLabels[primaryCareer] || primaryCareer;
+    const topPaths = topCareerEntries(2).map(([career]) => careerLabels[career] || career);
+    const bridge = previous
+      ? `前の時代の「${previous.choice}」で濃くなった${careerLabels[previous.primaryCareer] || previous.primaryCareer}の線が、ここで${pathLabel}の選択に接続します。`
+      : `${game.homeLabel}の空気が、最初の${pathLabel}への傾きを作りました。`;
     const twist = synergy
-      ? `時代の風、つまり「${event.title}」が妙に味方し、`
-      : `「${event.title}」の空気は少し遠くで鳴っていましたが、`;
+      ? `同じ頃の「${event.title}」が追い風になり、`
+      : `「${event.title}」の時代背景は直接の答えではありませんでしたが、`;
     const contextLine = option.context
-      ? `これは「${option.context}」だからこそ起きた、別の実家や町では少し形を変えていた分岐です。`
+      ? `「${option.context}」という条件があるので、この出来事は急な偶然ではなく、育った場所から伸びた分岐です。`
       : "";
+    const consequence = careerConsequences[primaryCareer] || "この選択は、後の場面で別の肩書きに姿を変えて戻ってきます。";
+    const nextDoor = topPaths.length > 0
+      ? `いま太い線は ${topPaths.join(" / ")}。次の時代では、この線から外れる選択ほど大きな代償を持ちます。`
+      : "まだ太い線はありません。だからこそ、次の選択で人生の重心が大きく動きます。";
     const fragments = [
-      `${game.homeLabel}で育つ${name}は${option.title}。${twist}${stage.label}の選択は思ったより大きな影を伸ばしました。`,
+      `${game.homeLabel}で育つ${name}は「${option.title}」を選びました。${bridge}`,
       contextLine,
-      `${option.detail} その話は数年後、なぜか別の街で「伝説っぽい噂」として語られます。`,
-      `現実なら小さな出来事でも、この世界線では映画の第二幕の合図でした。`
-    ];
+      `${twist}${option.detail}`,
+      `${consequence} ${nextDoor}`
+    ].filter(Boolean);
     return {
-      title: synergy ? "時代が背中を押した" : "世界線が少し傾いた",
-      text: fragments.join("")
+      title: synergy ? "時代と選択が噛み合った" : "選択が次の理由を作った",
+      text: fragments.join("\n\n")
     };
   }
 
@@ -1389,7 +1562,7 @@
     const avatarY = height * 0.55;
     const avatarScale = width < 520 ? 1.18 : 1.52;
     drawPortraitSpotlight(ctx, avatarX, avatarY, width, height);
-    drawCharacter(ctx, avatarX, avatarY, characterStyle(stage.age, selectedOption ? "#f4c260" : "#4ba3a0", selectedOption ? "bright" : "calm"), avatarScale);
+    drawPhotoPortrait(ctx, avatarX, avatarY, characterStyle(stage.age, selectedOption ? "#f4c260" : "#4ba3a0", selectedOption ? "bright" : "calm"), avatarScale);
 
     if (selectedOption) {
       const panelWidth = Math.min(width - 44, width < 520 ? width - 44 : width * 0.58);
@@ -1593,7 +1766,7 @@
     ctx.stroke();
 
     drawPortraitSpotlight(ctx, width * 0.5, height * 0.43, width, height);
-    drawCharacter(ctx, width * 0.5, height * 0.42, characterStyle(70, color, "proud"), 1.55);
+    drawPhotoPortrait(ctx, width * 0.5, height * 0.42, characterStyle(70, color, "proud"), 1.55);
 
     ctx.fillStyle = "rgba(8,7,10,0.76)";
     roundRect(ctx, width * 0.12, height * 0.63, width * 0.76, height * 0.2, 8);
@@ -1623,6 +1796,382 @@
       ctx.fill();
     }
     ctx.restore();
+  }
+
+  function drawPhotoPortrait(ctx, x, y, style, scale = 1) {
+    if (drawRasterPortrait(ctx, x, y, style, scale)) {
+      return;
+    }
+    const age = style.age;
+    const isChild = age < 13;
+    const isTeen = age >= 13 && age < 20;
+    const isElder = age >= 60;
+    const career = topCareer();
+    const home = homeProfiles[game.home] || homeProfiles.salary;
+    const palette = portraitPalette(career, home);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = "rgba(0,0,0,0.34)";
+    ctx.beginPath();
+    ctx.ellipse(4, 58, 70, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.rotate((textHash(`${game.heroName}-${age}`) % 7 - 3) * 0.006);
+    ctx.fillStyle = "#f6ead1";
+    roundRect(ctx, -70, -112, 140, 174, 9);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(90,58,37,0.42)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.save();
+    roundRect(ctx, -60, -102, 120, 144, 6);
+    ctx.clip();
+    drawPortraitBackdrop(ctx, palette, home, career, age);
+    drawPortraitBust(ctx, style, palette, age, isChild, isTeen, isElder);
+    drawPortraitGrain(ctx);
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(92,57,36,0.62)";
+    ctx.font = "800 8px 'Yu Gothic', Meiryo, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${age}歳 / ${home.label}`, 0, 54);
+    ctx.restore();
+  }
+
+  function portraitColumnForAge(age) {
+    if (age < 13) {
+      return 0;
+    }
+    if (age < 20) {
+      return 1;
+    }
+    if (age < 35) {
+      return 2;
+    }
+    if (age < 60) {
+      return 3;
+    }
+    return 4;
+  }
+
+  function portraitRowForGender() {
+    if (game.gender === "male") {
+      return 1;
+    }
+    if (game.gender === "neutral") {
+      return 2;
+    }
+    return 0;
+  }
+
+  function drawRasterPortrait(ctx, x, y, style, scale = 1) {
+    if (!portraitSheetReady || portraitSheet.naturalWidth === 0) {
+      return false;
+    }
+    const age = style.age;
+    const home = homeProfiles[game.home] || homeProfiles.salary;
+    const career = topCareer();
+    const palette = portraitPalette(career, home);
+    const cellWidth = portraitSheet.naturalWidth / 5;
+    const cellHeight = portraitSheet.naturalHeight / 3;
+    const sx = portraitColumnForAge(age) * cellWidth;
+    const sy = portraitRowForGender() * cellHeight;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.rotate((textHash(`${game.heroName}-${age}`) % 7 - 3) * 0.006);
+
+    ctx.fillStyle = "rgba(0,0,0,0.34)";
+    ctx.beginPath();
+    ctx.ellipse(4, 58, 70, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#f6ead1";
+    roundRect(ctx, -70, -112, 140, 174, 9);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(90,58,37,0.42)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.save();
+    roundRect(ctx, -60, -102, 120, 144, 6);
+    ctx.clip();
+    ctx.drawImage(portraitSheet, sx, sy, cellWidth, cellHeight, -60, -102, 120, 144);
+    const tint = ctx.createLinearGradient(-60, -102, 60, 42);
+    tint.addColorStop(0, `${palette[1]}1f`);
+    tint.addColorStop(1, `${palette[2]}33`);
+    ctx.fillStyle = tint;
+    ctx.fillRect(-60, -102, 120, 144);
+    ctx.restore();
+
+    ctx.strokeStyle = style.mood === "bright" ? "#f4c260" : "rgba(244,194,96,0.46)";
+    ctx.lineWidth = 3;
+    roundRect(ctx, -61, -103, 122, 146, 7);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(92,57,36,0.68)";
+    ctx.font = "800 8px 'Yu Gothic', Meiryo, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${age}歳 / ${home.label}`, 0, 54);
+    ctx.restore();
+    return true;
+  }
+
+  function portraitPalette(career, home) {
+    const byCareer = {
+      agriculture: ["#8ba76a", "#e6d2a8", "#4d643e"],
+      salaryman: ["#516171", "#d9d1c3", "#27313a"],
+      business: ["#596b76", "#e0c29c", "#2f3f46"],
+      public: ["#61756e", "#d7d9c5", "#34423d"],
+      teacher: ["#6b7359", "#eadbb5", "#3d4433"],
+      artist: ["#9a6a64", "#efd0a3", "#4b343c"],
+      actor: ["#6f4f75", "#e7c7a2", "#30233a"],
+      writer: ["#715f53", "#ead6b1", "#3d332e"],
+      architect: ["#59707b", "#ddd5c7", "#263944"],
+      science: ["#51767c", "#d8e1d6", "#243d42"],
+      travel: ["#5e7f89", "#e4c99c", "#263c4a"],
+      wander: ["#7c735d", "#e3c894", "#463c2d"],
+      romance: ["#9c626c", "#efd1bd", "#4e2e39"],
+      family: ["#8a6d53", "#ecd8ad", "#4a3827"],
+      homemaker: ["#876a56", "#ead8b6", "#473728"]
+    };
+    const fallback = {
+      farm: ["#8ba76a", "#e6d2a8", "#4d643e"],
+      shop: ["#9c6a56", "#ead0a5", "#4a3227"],
+      factory: ["#607985", "#d5d5c9", "#2f4148"],
+      public: ["#68776d", "#ddd9bd", "#364238"],
+      fishery: ["#527f8d", "#e1ceb0", "#233e49"],
+      salary: ["#59636f", "#e2d2b8", "#2e343d"]
+    };
+    return byCareer[career] || fallback[game.home] || fallback.salary;
+  }
+
+  function drawPortraitBackdrop(ctx, palette, home, career, age) {
+    const bg = ctx.createLinearGradient(-60, -102, 60, 42);
+    bg.addColorStop(0, palette[1]);
+    bg.addColorStop(0.56, palette[0]);
+    bg.addColorStop(1, palette[2]);
+    ctx.fillStyle = bg;
+    ctx.fillRect(-60, -102, 120, 144);
+
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = "#fff3d0";
+    ctx.lineWidth = 2;
+    if (home.label.includes("農")) {
+      for (let i = 0; i < 6; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(-60, -18 + i * 12);
+        ctx.quadraticCurveTo(0, -30 + i * 9, 60, -22 + i * 12);
+        ctx.stroke();
+      }
+    } else if (home.label.includes("商店")) {
+      for (let i = 0; i < 7; i += 1) {
+        ctx.fillStyle = i % 2 ? "#fff1bf" : "#b65342";
+        ctx.fillRect(-60 + i * 18, -102, 18, 34);
+      }
+    } else if (home.label.includes("工場")) {
+      for (let i = 0; i < 5; i += 1) {
+        ctx.strokeRect(-52 + i * 26, -82 + (i % 2) * 12, 18, 36);
+      }
+    } else if (home.label.includes("漁")) {
+      ctx.beginPath();
+      ctx.moveTo(-60, -26);
+      ctx.quadraticCurveTo(-20, -40, 18, -28);
+      ctx.quadraticCurveTo(42, -18, 60, -30);
+      ctx.stroke();
+    } else {
+      for (let i = 0; i < 5; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(-46 + i * 22, -88);
+        ctx.lineTo(-46 + i * 22, -36);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    const eraYear = game.birthYear + age;
+    ctx.fillStyle = "rgba(20,18,18,0.28)";
+    ctx.font = "900 24px 'Yu Gothic', Meiryo, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(String(decadeKey(eraYear)), -54, -72);
+    if (career === "writer" || career === "journalist") {
+      ctx.fillRect(-52, -50, 48, 5);
+      ctx.fillRect(-52, -38, 70, 4);
+    }
+    if (career === "baseball" || career === "athlete" || career === "soccer") {
+      ctx.beginPath();
+      ctx.arc(38, -68, 13, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.stroke();
+    }
+  }
+
+  function drawPortraitBust(ctx, style, palette, age, isChild, isTeen, isElder) {
+    const face = ctx.createRadialGradient(-12, -56, 8, 0, -42, 38);
+    face.addColorStop(0, "#ffe1c5");
+    face.addColorStop(0.62, style.skin);
+    face.addColorStop(1, "#c78e72");
+    const hair = isElder ? "#c7c0b6" : style.hair;
+    const shoulderY = isChild ? 18 : 12;
+
+    ctx.fillStyle = "rgba(12,10,10,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, 40, 52, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = palette[2];
+    ctx.beginPath();
+    ctx.moveTo(-48, 44);
+    ctx.quadraticCurveTo(-40, shoulderY, -18, 4);
+    ctx.lineTo(18, 4);
+    ctx.quadraticCurveTo(42, shoulderY, 50, 44);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = isTeen ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.26)";
+    ctx.beginPath();
+    ctx.moveTo(-14, 5);
+    ctx.lineTo(0, 34);
+    ctx.lineTo(14, 5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = style.skin;
+    ctx.beginPath();
+    ctx.roundRect?.(-9, -12, 18, 24, 7);
+    if (!ctx.roundRect) {
+      roundRect(ctx, -9, -12, 18, 24, 7);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.ellipse(0, -53, 31, game.gender === "female" ? 39 : 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = face;
+    ctx.beginPath();
+    ctx.ellipse(0, -43, isChild ? 24 : 25, isChild ? 28 : 31, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    if (game.gender === "male") {
+      ctx.moveTo(-25, -58);
+      ctx.quadraticCurveTo(-7, -78, 25, -60);
+      ctx.quadraticCurveTo(8, -48, -25, -58);
+    } else if (game.gender === "neutral") {
+      ctx.moveTo(-27, -60);
+      ctx.quadraticCurveTo(-3, -80, 26, -58);
+      ctx.quadraticCurveTo(6, -42, -27, -60);
+    } else {
+      ctx.moveTo(-28, -58);
+      ctx.quadraticCurveTo(-7, -82, 29, -60);
+      ctx.quadraticCurveTo(10, -44, -28, -58);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(185,112,88,0.16)";
+    ctx.beginPath();
+    ctx.ellipse(-13, -36, 8, 5, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(13, -36, 8, 5, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(42,32,30,0.82)";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-17, -48);
+    ctx.quadraticCurveTo(-10, -51, -3, -48);
+    ctx.moveTo(3, -48);
+    ctx.quadraticCurveTo(10, -51, 17, -48);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#1e1a19";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-14, -43);
+    ctx.quadraticCurveTo(-9, -45, -4, -43);
+    ctx.moveTo(4, -43);
+    ctx.quadraticCurveTo(9, -45, 14, -43);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.beginPath();
+    ctx.ellipse(-9, -43.6, 3.8, 1.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(9, -43.6, 3.8, 1.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#211d1c";
+    ctx.beginPath();
+    ctx.ellipse(-8.5, -43.7, 1.35, 1.65, 0, 0, Math.PI * 2);
+    ctx.ellipse(9.5, -43.7, 1.35, 1.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(90,58,49,0.58)";
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(0, -42);
+    ctx.quadraticCurveTo(-2.5, -36, 1.8, -34);
+    ctx.moveTo(-2.2, -33);
+    ctx.quadraticCurveTo(0, -32, 2.8, -33);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(72,42,40,0.72)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    const smile = style.mood === "bright" ? 0.9 : isElder ? 0.1 : 0.35;
+    ctx.moveTo(-8, -25);
+    ctx.quadraticCurveTo(0, -24 + smile * 2, 8, -25);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(170,88,82,0.35)";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-5, -23.5);
+    ctx.quadraticCurveTo(0, -22.5 + smile, 5, -23.5);
+    ctx.stroke();
+
+    if (isElder) {
+      ctx.strokeStyle = "rgba(80,62,56,0.42)";
+      ctx.lineWidth = 1;
+      for (const y of [-36, -31]) {
+        ctx.beginPath();
+        ctx.moveTo(-21, y);
+        ctx.quadraticCurveTo(-15, y - 2, -8, y);
+        ctx.moveTo(8, y);
+        ctx.quadraticCurveTo(15, y - 2, 21, y);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(34,28,27,0.58)";
+      ctx.beginPath();
+      ctx.arc(-9, -44, 7, 0, Math.PI * 2);
+      ctx.arc(9, -44, 7, 0, Math.PI * 2);
+      ctx.moveTo(-2, -44);
+      ctx.lineTo(2, -44);
+      ctx.stroke();
+    }
+  }
+
+  function drawPortraitGrain(ctx) {
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = "#fff7df";
+    for (let i = 0; i < 34; i += 1) {
+      const x = -58 + (textHash(`${game.heroName}-${i}`) % 116);
+      const y = -100 + (textHash(`${game.birthYear}-${i}`) % 138);
+      ctx.fillRect(x, y, 1.2, 1.2);
+    }
+    ctx.globalAlpha = 1;
+    const vignette = ctx.createRadialGradient(0, -34, 18, 0, -34, 92);
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.22)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(-60, -102, 120, 144);
   }
 
   function drawCharacter(ctx, x, y, style, scale = 1) {

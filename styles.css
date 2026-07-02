@@ -23,7 +23,7 @@ body {
   background:
     radial-gradient(circle at 28% 18%, rgba(255, 227, 159, 0.22), transparent 30%),
     linear-gradient(90deg, rgba(25, 14, 16, 0.84), rgba(65, 39, 31, 0.54) 48%, rgba(21, 25, 27, 0.82)),
-    url("assets/album-hero.svg") center / cover fixed;
+    url("assets/flashback-hero.svg") center / cover fixed;
   color: var(--ink);
   font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
 }
@@ -115,7 +115,7 @@ h2 {
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(23, 12, 12, 0.02) 0%, rgba(23, 12, 12, 0.12) 38%, rgba(23, 12, 12, 0.86) 100%),
-    url("assets/album-hero.svg") center / cover;
+    url("assets/flashback-hero.svg") center / cover;
   box-shadow: var(--shadow);
   padding: clamp(22px, 4vw, 42px);
 }
