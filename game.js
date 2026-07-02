@@ -258,8 +258,14 @@
     contextChoice("放課後のクラブ顧問になる", "勝ち負けよりも、帰り道の表情を覚える仕事が性に合ってしまう。", ["teacher", "athlete", "public"], { trust: 3, body: 1 }, "職業・教師", { stages: ["firstWork", "thirties", "middle"], anyCareer: ["baseball", "athlete", "public"], minScore: 3 }),
     contextChoice("建築学科で紙の模型を徹夜で作る", "窓の位置を一ミリ動かしただけで、人の孤独まで変わる気がする。", ["architect", "artist", "science"], { art: 2, mind: 2 }, "職業・建築家", { stages: ["twenties", "firstWork"], anyCareer: ["artist", "science"], minScore: 2 }),
     contextChoice("古い駅舎の保存計画に参加する", "壊されるはずだった建物が、あなたの図面の中で二度目の人生を始める。", ["architect", "public", "artist"], { trust: 2, art: 2 }, "職業・建築家", { stages: ["thirties", "middle", "late"], anyCareer: ["architect", "public", "artist"], minScore: 4 }),
+    contextChoice("理系の研究室で夜明けの実験を見る", "白衣の袖口に薬品の匂いが残り、未来は机上の夢ではなく手を動かす仕事になる。", ["science", "business"], { mind: 3, trust: 1 }, "進路・理系", { stages: ["twenties", "firstWork"], anyCareer: ["science", "architect", "business"], minScore: 2 }),
+    contextChoice("文学部の掲示板で出版社求人を見つける", "薄い求人票一枚が、読んできた本と食べていく現実を急に同じ机へ乗せる。", ["writer", "media", "salaryman"], { mind: 2, art: 1 }, "進路・文系", { stages: ["twenties", "firstWork"], anyCareer: ["writer", "artist", "travel", "media"], minScore: 2 }),
+    contextChoice("職業訓練校で工具の名前を覚える", "手の中の重さを覚えるたびに、肩書きより先に技術が自分を支え始める。", ["architect", "science", "salaryman"], { mind: 2, trust: 2 }, "進路・手に職", { stages: ["twenties", "firstWork", "thirties"], minStats: { mind: 5 } }),
+    contextChoice("ハローワークで現実的な求人票を見る", "夢の欄には何も書けないまま、生活費という言葉だけが妙に大きく見える。", ["salaryman", "business", "public"], { trust: 2, mind: 1 }, "就職・現実路線", { stages: ["firstWork", "thirties"], minYear: 1950, maxYear: 2025 }),
     contextChoice("大企業の総合職として名刺を持つ", "満員電車と会議資料の中で、普通の人生にも十分な劇薬があると知る。", ["salaryman", "business", "public"], { trust: 2, mind: 1 }, "職業・サラリーマン", { stages: ["firstWork", "thirties"], minYear: 1950, maxYear: 2025 }),
     contextChoice("異動辞令で知らない街へ飛ばされる", "行きたくなかった支店で、人生の主役級の友人に出会ってしまう。", ["salaryman", "travel", "business"], { trust: 2, freedom: 1 }, "転機・会社員人生", { stages: ["thirties", "middle"], anyCareer: ["salaryman", "business", "public"], minScore: 3 }),
+    contextChoice("フリーランスの屋号をノートに書く", "まだ仕事は一件もないのに、屋号だけが先に歩き出してしまう。", ["media", "artist", "business"], { freedom: 2, fame: 1 }, "就職・自由業", { stages: ["firstWork", "thirties"], anyCareer: ["artist", "writer", "media", "business"], minScore: 2 }),
+    contextChoice("恋人の部屋に転がり込み、生活を立て直す", "誰かに頼ることが負けではなく、いつか返す約束として胸に残る。", ["romance", "family", "homemaker"], { trust: 2, charm: 1 }, "暮らし・頼り頼られ", { stages: ["firstWork", "thirties"], anyCareer: ["romance", "family", "wander", "artist"], minScore: 2 }),
     contextChoice("専業主婦として家庭の物語を選ぶ", "表舞台から降りたはずの毎日が、家族全員の進路を少しずつ書き換えていく。", ["homemaker", "writer", "public"], { trust: 3, charm: 1 }, "暮らし・専業主婦", { genders: ["female"], stages: ["twenties", "firstWork", "thirties"], minYear: 1950, maxYear: 2025 }),
     contextChoice("専業主夫として家庭の舵を取る", "周囲の驚きは長く続かず、気づけば台所がいちばん重要な作戦室になる。", ["homemaker", "public", "writer"], { trust: 3, mind: 1 }, "暮らし・専業主夫", { genders: ["male"], stages: ["twenties", "firstWork", "thirties"], minYear: 1970, maxYear: 2025 }),
     contextChoice("家庭を軸に、肩書きのない仕事を始める", "履歴書には書きにくい日々が、誰かにとって一番頼れる場所になる。", ["homemaker", "public", "artist"], { trust: 3, freedom: 1 }, "暮らし・家庭中心", { genders: ["neutral"], stages: ["twenties", "firstWork", "thirties"], minYear: 1970, maxYear: 2025 }),
@@ -1089,6 +1095,15 @@
       }
       return isHomeOrEraPressure(option) || !isLinkedToPath(option);
     }));
+    const revisitCareers = ["family", "romance", "salaryman", "homemaker", "business", "public", "teacher"];
+    const revisitPool = sorted(allCandidates.filter((option) => {
+      if (continuityPool[0]?.title === option.title || pivotPool[0]?.title === option.title) {
+        return false;
+      }
+      return option.careers.some((career) => {
+        return revisitCareers.includes(career) || activeCareers.includes(career) || home.careers?.[career];
+      });
+    }));
     const rescuePool = sorted(uniqueByTitle([...stage.choices, ...dramaticChoiceRules, ...fallbackChoicesForStage(stage)])
       .filter((option) => matchesRule(option, stage, year, event)));
     const lastResortPool = sorted([...stage.choices, ...dramaticChoiceRules, ...fallbackChoicesForStage(stage)]
@@ -1105,19 +1120,20 @@
 
     addChoice(continuityPool[0] || sorted(allCandidates)[0] || rescuePool[0], "continue");
     addChoice(pivotPool[0] || sorted(allCandidates).find((option) => option.title !== selected[0]?.title) || rescuePool.find((option) => option.title !== selected[0]?.title), "pivot");
-    if (selected.length < 2) {
-      addChoice(rescuePool.find((option) => option.title !== selected[0]?.title), selected.length === 0 ? "continue" : "pivot");
+    addChoice(revisitPool.find((option) => !selected.some((existing) => existing.title === option.title)) || rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), "revisit");
+    if (selected.length < 3) {
+      addChoice(rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
     }
-    if (selected.length < 2) {
-      addChoice(lastResortPool.find((option) => option.title !== selected[0]?.title), selected.length === 0 ? "continue" : "pivot");
+    if (selected.length < 3) {
+      addChoice(lastResortPool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
     }
-    return selected.slice(0, 2);
+    return selected.slice(0, 3);
   }
 
   function enrichChoice(option, mode, stage, event) {
     return {
       ...option,
-      routeLabel: mode === "continue" ? "A いまの道を進む" : "B 境遇を越える",
+      routeLabel: mode === "continue" ? "A いまの道を進む" : mode === "pivot" ? "B 境遇を越える" : "C もう一度悩む",
       routeHint: choiceRouteHint(option, mode, stage, event),
       risk: choiceRiskText(option, mode)
     };
@@ -1125,6 +1141,12 @@
 
   function choiceRouteHint(option, mode, stage, event) {
     const previous = game.log[game.log.length - 1];
+    if (mode === "revisit" && previous) {
+      return `前に保留した迷いが、別の形でもう一度戻ってくる道。`;
+    }
+    if (mode === "revisit") {
+      return `${game.homeLabel}で覚えた安心と不安が、もう一度足を止める道。`;
+    }
     if (mode === "continue" && previous) {
       return `前の「${previous.choice}」から自然につながる道。`;
     }
@@ -1139,6 +1161,9 @@
   }
 
   function choiceRiskText(option, mode) {
+    if (mode === "revisit") {
+      return "先延ばしにした問いほど、あとで大きく戻ってくる。";
+    }
     if (option.careers.some((career) => ["artist", "actor", "writer", "media"].includes(career))) {
       return mode === "continue" ? "届かなければ、暮らしは少し不安定になる。" : "見られるほど、失敗も人前に残る。";
     }
@@ -1322,7 +1347,7 @@
     stageLabel.textContent = stage.label;
     historyTitle.textContent = `${event.year}年: ${event.title}`;
     historyText.textContent = `${event.text} ${homePerspective(event, year)}`;
-    promptTitle.textContent = `${stage.prompt} 二つの道から選ぶ。`;
+    promptTitle.textContent = `${stage.prompt} 三つの道から選ぶ。`;
 
     const stageChoices = choicesForStage(stage, year, event);
     game.currentChoices = stageChoices;
@@ -1333,7 +1358,7 @@
       button.className = "choice-card";
       button.type = "button";
       button.innerHTML = `
-        <em class="choice-route">${option.routeLabel || (index === 0 ? "A いまの道を進む" : "B 境遇を越える")}</em>
+        <em class="choice-route">${option.routeLabel || ["A いまの道を進む", "B 境遇を越える", "C もう一度悩む"][index] || "分岐"}</em>
         <strong>${option.title}</strong>
         <span>${option.routeHint || option.detail}</span>
         ${choicePreview(option)}
@@ -1360,28 +1385,30 @@
       : "まだ白紙";
 
     futureLabel.textContent = stageChoices.length >= 2
-      ? `${stageChoices[0].title} / ${stageChoices[1].title}`
+      ? stageChoices.map((option) => option.title).join(" / ")
       : "次の選択で道が決まる";
   }
 
   function choicePreview(option) {
-    const labels = {
-      body: "体力",
-      art: "表現",
-      mind: "知性",
-      charm: "魅力",
-      trust: "信頼",
-      freedom: "自由",
-      fame: "名声"
-    };
-    const gains = Object.entries(option.stats)
-      .slice(0, 2)
-      .map(([key, value]) => `${labels[key]}+${value}`)
-      .join(" / ");
     return `
-      <small class="choice-impact">得るもの: ${gains || "新しい視点"}</small>
+      <small class="choice-impact">開く先: ${futureSpreadText(option)}</small>
       <small class="choice-risk">リスク: ${option.risk || choiceRiskText(option, "pivot")}</small>
     `;
+  }
+
+  function futureSpreadText(option, limit = 3) {
+    const futureCareers = [];
+    const addCareer = (career) => {
+      if (career && !futureCareers.includes(career)) {
+        futureCareers.push(career);
+      }
+    };
+    option.careers.forEach(addCareer);
+    option.careers.forEach((career) => (careerLinks[career] || []).slice(0, 2).forEach(addCareer));
+    return futureCareers
+      .slice(0, limit)
+      .map((career) => careerLabels[career] || career)
+      .join(" / ");
   }
 
   function choose(choiceIndex) {
@@ -1490,10 +1517,12 @@
       : `世の中では「${event.title}」が語られていましたが、${name}にとって大事だったのは目の前の小さな決断でした。`;
     const consequence = careerConsequences[primaryCareer] || "その小さな決断は、あとで思わぬ肩書きに姿を変えます。";
     const risk = option.risk || choiceRiskText(option, "pivot");
+    const spread = futureSpreadText(option);
     const fragments = [
       `${name}は「${option.title}」を選びました。${bridge}`,
       `${eraLine} ${option.detail}`,
       `${pathLabel}へ向かう景色は濃くなります。けれど、${risk}`,
+      `この先には、${spread}のどれを仕事や暮らしにするかという、新しい迷いが見え始めます。`,
       consequence
     ].filter(Boolean);
     return {
@@ -1805,6 +1834,91 @@
     return `濃くなった道: ${entries.map(([career]) => careerLabels[career] || career).join(" / ")}`;
   }
 
+  function roleTitleForAge(age) {
+    const career = topCareer();
+    if (age < 13) {
+      const childTitles = {
+        business: "小さな商売人",
+        media: "街の観察者",
+        writer: "物語好き",
+        science: "発明好き",
+        artist: "絵描き",
+        public: "係のリーダー",
+        baseball: "校庭の投手",
+        athlete: "運動好き"
+      };
+      return childTitles[career] || "放課後の主人公";
+    }
+    if (age < 20) {
+      if (["science", "architect"].includes(career)) return "理系志望";
+      if (["writer", "journalist", "politics", "teacher", "public"].includes(career)) return "文系志望";
+      if (["artist", "actor", "media"].includes(career)) return "表現者の卵";
+      if (["baseball", "athlete", "soccer"].includes(career)) return "部活の挑戦者";
+      return "進路に迷う人";
+    }
+    if (age < 25) {
+      if (["science", "architect"].includes(career)) return "理系学生";
+      if (["writer", "journalist", "politics", "teacher", "public"].includes(career)) return "文系学生";
+      if (["artist", "actor", "media"].includes(career)) return "表現修業中";
+      if (["travel", "wander"].includes(career)) return "旅する若者";
+      if (["business", "salaryman"].includes(career)) return "就活生";
+      return "社会へ出る前夜";
+    }
+    if (age < 35) {
+      const workTitles = {
+        salaryman: "会社員",
+        business: "新社会人",
+        science: "技術職見習い",
+        architect: "設計見習い",
+        writer: "文筆業見習い",
+        journalist: "記者見習い",
+        media: "メディア職",
+        artist: "自由業見習い",
+        actor: "俳優の卵",
+        teacher: "教師",
+        public: "公務の人",
+        homemaker: "暮らしの舵取り",
+        romance: "相棒を持つ人",
+        travel: "海外暮らし",
+        wander: "放浪者"
+      };
+      return workTitles[career] || "新社会人";
+    }
+    if (age < 55) {
+      const adultTitles = {
+        salaryman: "中堅会社員",
+        business: "事業主",
+        science: "技術者",
+        architect: "建築家",
+        writer: "作家",
+        journalist: "記者",
+        media: "発信者",
+        artist: "芸術家",
+        actor: "俳優",
+        teacher: "教師",
+        public: "地域の支え手",
+        homemaker: "家庭の司令塔",
+        politics: "地域政治家",
+        travel: "越境する人",
+        wander: "自由業"
+      };
+      return adultTitles[career] || "人生の転機";
+    }
+    const lateTitles = {
+      writer: "回想録の人",
+      teacher: "教える人",
+      public: "相談役",
+      business: "店主",
+      artist: "創作の人",
+      actor: "語り部",
+      travel: "旅の達人",
+      wander: "自由人",
+      family: "家族の語り部",
+      homemaker: "暮らしの達人"
+    };
+    return lateTitles[career] || "晩年の主人公";
+  }
+
   function drawStartCanvas() {
     if (!lifeCanvas.isConnected) {
       return;
@@ -1899,9 +2013,7 @@
     ctx.restore();
 
     ctx.fillStyle = "rgba(92,57,36,0.62)";
-    ctx.font = "800 8px 'Yu Gothic', Meiryo, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`${age}歳 / ${home.label}`, 0, 54);
+    fillFittedText(ctx, `${age}歳 / ${roleTitleForAge(age)}`, 0, 54, 118, 8, 6, 800, "center");
     ctx.restore();
   }
 
@@ -1978,9 +2090,7 @@
     ctx.stroke();
 
     ctx.fillStyle = "rgba(92,57,36,0.68)";
-    ctx.font = "800 8px 'Yu Gothic', Meiryo, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`${age}歳 / ${home.label}`, 0, 54);
+    fillFittedText(ctx, `${age}歳 / ${roleTitleForAge(age)}`, 0, 54, 118, 8, 6, 800, "center");
     ctx.restore();
     return true;
   }

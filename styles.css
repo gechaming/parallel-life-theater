@@ -597,8 +597,8 @@ h2 {
   }
 
   #lifeCanvas {
-    height: 86px;
-    min-height: 86px;
+    height: 54px;
+    min-height: 54px;
   }
 
   .fate-strip {
@@ -610,14 +610,14 @@ h2 {
   .outcome-panel {
     grid-column: 1;
     grid-row: auto;
-    padding: 8px;
+    padding: 6px 8px;
   }
 
   .history-card h2,
   .choice-area h2,
   .outcome-panel h2 {
-    margin-bottom: 5px;
-    font-size: 17px;
+    margin-bottom: 3px;
+    font-size: 16px;
   }
 
   #historyText,
@@ -627,10 +627,7 @@ h2 {
   }
 
   #historyText {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
+    display: none;
   }
 
   .choices {
@@ -639,30 +636,34 @@ h2 {
   }
 
   .choice-card {
-    min-height: 80px;
-    padding: 9px 10px;
+    min-height: 62px;
+    padding: 6px 8px;
   }
 
   .choice-route {
-    margin-bottom: 5px;
-    padding: 3px 7px;
-    font-size: 10px;
+    margin-bottom: 4px;
+    padding: 2px 6px;
+    font-size: 9px;
   }
 
   .choice-card strong {
-    margin-bottom: 5px;
-    font-size: 15px;
+    margin-bottom: 3px;
+    font-size: 13px;
   }
 
   .choice-card span {
+    display: none;
     font-size: 12px;
-    line-height: 1.32;
+    line-height: 1.25;
   }
 
   .choice-impact,
   .choice-risk {
-    margin-top: 5px;
-    font-size: 11px;
+    overflow: hidden;
+    margin-top: 3px;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .stat-row {
