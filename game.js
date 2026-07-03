@@ -238,7 +238,7 @@
     contextChoice("月面着陸の日に宇宙クラブを作る", "段ボールの宇宙船は雨で壊れたが、乗員名簿だけは大人になるまで残る。", ["science", "artist"], { mind: 2, art: 1 }, "1969年・宇宙への憧れ", { stages: ["child", "junior", "high"], minYear: 1969, maxYear: 1972 }),
     contextChoice("ベルリンの壁のニュースを見て交換留学を決める", "地図の赤い線が消える瞬間、あなたの部屋の壁も少し低くなる。", ["travel", "politics", "writer"], { freedom: 2, mind: 1 }, "1989年・世界の転換", { stages: ["high", "twenties", "firstWork"], minYear: 1989, maxYear: 1993 }),
     contextChoice("インターネットカフェで別名義の人生を始める", "画面の中の名前だけが先に旅をして、現実のあなたを追い越していく。", ["media", "writer", "wander"], { freedom: 2, fame: 1 }, "1990年代・ネット黎明期", { stages: ["junior", "high", "twenties", "firstWork"], minYear: 1995, maxYear: 2005 }),
-    contextChoice("スマホで一分映画を撮る", "通学路の退屈な信号待ちが、知らない国の誰かには名場面に見える。", ["media", "actor", "artist"], { fame: 2, art: 1 }, "スマホ時代", { stages: ["junior", "high", "twenties", "firstWork"], minYear: 2008, maxYear: 2025 }),
+    contextChoice("スマホで一分映画を撮る", "通学路の退屈な信号待ちを一分に切り取ると、文化祭の教室が少し静かになる。", ["media", "actor", "artist"], { fame: 2, art: 1 }, "スマホ時代", { stages: ["junior", "high", "twenties", "firstWork"], minYear: 2008, maxYear: 2025 }),
     contextChoice("オンライン劇団を旗揚げする", "会ったことのない仲間と、画面の四角だけで拍手の場所を作る。", ["actor", "media", "writer"], { art: 2, trust: 1 }, "2020年代・オンライン化", { stages: ["high", "twenties", "firstWork", "thirties", "middle"], minYear: 2020, maxYear: 2025 }),
 
     contextChoice("隣の席の人にだけ本当の夢を話す", "笑われると思った夢を真剣に聞かれたせいで、進路希望の紙が書き換わる。", ["romance", "writer"], { charm: 2, trust: 1 }, "恋愛・初恋", { stages: ["junior", "high"], minYear: 1950, maxYear: 2025 }),
@@ -315,8 +315,8 @@
     {
       stages: ["junior", "high", "twenties"],
       careers: ["artist", "actor", "media"],
-      title: "一枚の映像が知らない街で話題になる",
-      text: "本人の知らないところで広がった評判が、次の選択肢に少し危険な近道を作りました。",
+      title: "小さな映像が身近な人に届く",
+      text: "文化祭や町の上映で受けた拍手が、次の一歩を少しだけ大胆にしました。",
       addCareers: { media: 2, fame: 1 },
       addStats: { fame: 1, charm: 1 }
     },
@@ -510,6 +510,32 @@
     romance: ["family", "travel", "writer", "artist"],
     family: ["homemaker", "teacher", "public", "romance"]
   };
+
+  const adultRealisticCareers = new Set([
+    "salaryman",
+    "business",
+    "public",
+    "teacher",
+    "architect",
+    "science",
+    "homemaker",
+    "family",
+    "agriculture",
+    "writer",
+    "journalist",
+    "media",
+    "romance"
+  ]);
+  const adultSurpriseCareers = new Set([
+    "actor",
+    "wander",
+    "travel",
+    "baseball",
+    "athlete",
+    "soccer",
+    "politics",
+    "artist"
+  ]);
 
   const careerConsequences = {
     baseball: "体で覚えた勝負勘は、あとで教える側や支える側へ形を変えます。",
@@ -1078,6 +1104,18 @@
       const eraCareer = option.careers.some((career) => event.tags.includes(career));
       return homeCareer || eraCareer || option.rule?.homes?.includes(game.home);
     };
+    const isAdultRealisticOption = (option) => {
+      if (stage.age < 25) {
+        return true;
+      }
+      const hasRealistic = option.careers.some((career) => adultRealisticCareers.has(career));
+      const hasHomeRoot = option.careers.some((career) => home.careers?.[career]);
+      const linkedCount = option.careers.filter((career) => {
+        return activeCareers.includes(career) || activeCareers.some((activeCareer) => (careerLinks[activeCareer] || []).includes(career));
+      }).length;
+      const surpriseCount = option.careers.filter((career) => adultSurpriseCareers.has(career)).length;
+      return hasRealistic || hasHomeRoot || linkedCount >= 2 || (linkedCount > 0 && surpriseCount <= 1);
+    };
     const sorted = (items) => items
       .slice()
       .sort((a, b) => {
@@ -1109,6 +1147,27 @@
     const lastResortPool = sorted([...stage.choices, ...dramaticChoiceRules, ...fallbackChoicesForStage(stage)]
       .filter((option) => matchesRule(option, stage, year, event))
       .filter((option) => !chosenTitles.has(option.title)));
+    const adultSurpriseAllowed = stage.age >= 25 && seed % 5 === 0;
+    const adultPool = (items, allowSurprise = false) => {
+      if (stage.age < 25) {
+        return items;
+      }
+      const practical = items.filter(isAdultRealisticOption);
+      if (allowSurprise) {
+        const surprise = items.find((option) => !isAdultRealisticOption(option));
+        return sorted(surprise ? [...practical, surprise] : practical);
+      }
+      if (practical.length > 0) {
+        return practical;
+      }
+      return items.filter(isLinkedToPath);
+    };
+    const continuityChoices = adultPool(continuityPool, false);
+    const pivotChoices = adultPool(pivotPool, adultSurpriseAllowed);
+    const revisitChoices = adultPool(revisitPool, false);
+    const allCandidateChoices = adultPool(sorted(allCandidates), adultSurpriseAllowed);
+    const rescueChoices = adultPool(rescuePool, adultSurpriseAllowed);
+    const lastResortChoices = adultPool(lastResortPool, adultSurpriseAllowed);
 
     const selected = [];
     const addChoice = (option, mode) => {
@@ -1118,14 +1177,14 @@
       selected.push(enrichChoice(option, mode, stage, event));
     };
 
-    addChoice(continuityPool[0] || sorted(allCandidates)[0] || rescuePool[0], "continue");
-    addChoice(pivotPool[0] || sorted(allCandidates).find((option) => option.title !== selected[0]?.title) || rescuePool.find((option) => option.title !== selected[0]?.title), "pivot");
-    addChoice(revisitPool.find((option) => !selected.some((existing) => existing.title === option.title)) || rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), "revisit");
+    addChoice(continuityChoices[0] || allCandidateChoices[0] || rescueChoices[0] || rescuePool[0], "continue");
+    addChoice(pivotChoices[0] || allCandidateChoices.find((option) => option.title !== selected[0]?.title) || rescueChoices.find((option) => option.title !== selected[0]?.title) || rescuePool.find((option) => option.title !== selected[0]?.title), "pivot");
+    addChoice(revisitChoices.find((option) => !selected.some((existing) => existing.title === option.title)) || rescueChoices.find((option) => !selected.some((existing) => existing.title === option.title)) || rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), "revisit");
     if (selected.length < 3) {
-      addChoice(rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
+      addChoice(rescueChoices.find((option) => !selected.some((existing) => existing.title === option.title)) || rescuePool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
     }
     if (selected.length < 3) {
-      addChoice(lastResortPool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
+      addChoice(lastResortChoices.find((option) => !selected.some((existing) => existing.title === option.title)) || lastResortPool.find((option) => !selected.some((existing) => existing.title === option.title)), selected.length === 0 ? "continue" : selected.length === 1 ? "pivot" : "revisit");
     }
     return selected.slice(0, 3);
   }
@@ -1155,7 +1214,7 @@
     }
     const eventCareer = option.careers.find((career) => event.tags.includes(career));
     if (eventCareer) {
-      return `${event.title}の波に乗って、別の場所へ踏み出す道。`;
+      return `${event.title}に背中を押されて、別の場所へ踏み出す道。`;
     }
     return `${game.homeLabel}で身についた癖を、あえて別方向へ使う道。`;
   }
@@ -1285,6 +1344,8 @@
     game = {
       birthYear,
       heroName: profile.name,
+      heroGiven: profile.given,
+      heroFamily: profile.family,
       country: "jp",
       countryLabel: "日本",
       home: homeSelect.value in homeProfiles ? homeSelect.value : "salary",
@@ -1311,6 +1372,10 @@
 
   function currentYear() {
     return game.birthYear + currentStage().age;
+  }
+
+  function heroDisplayName() {
+    return game?.heroGiven || game?.heroName?.split(/\s+/).slice(-1)[0] || "";
   }
 
   function keepGameInView() {
@@ -1341,7 +1406,7 @@
     choicesEl.classList.remove("hidden");
     ageLabel.textContent = `${stage.age}歳`;
     yearLabel.textContent = `${year}年`;
-    nameLabel.textContent = game.heroName;
+    nameLabel.textContent = heroDisplayName();
     genderLabel.textContent = game.genderLabel;
     homeLabel.textContent = game.homeLabel;
     stageLabel.textContent = stage.label;
@@ -1361,7 +1426,6 @@
         <em class="choice-route">${option.routeLabel || ["A いまの道を進む", "B 境遇を越える", "C もう一度悩む"][index] || "分岐"}</em>
         <strong>${option.title}</strong>
         <span>${option.routeHint || option.detail}</span>
-        ${choicePreview(option)}
       `;
       button.addEventListener("click", () => choose(index));
       choicesEl.appendChild(button);
@@ -1387,13 +1451,6 @@
     futureLabel.textContent = stageChoices.length >= 2
       ? stageChoices.map((option) => option.title).join(" / ")
       : "次の選択で道が決まる";
-  }
-
-  function choicePreview(option) {
-    return `
-      <small class="choice-impact">開く先: ${futureSpreadText(option)}</small>
-      <small class="choice-risk">リスク: ${option.risk || choiceRiskText(option, "pivot")}</small>
-    `;
   }
 
   function futureSpreadText(option, limit = 3) {
@@ -1503,7 +1560,7 @@
   }
 
   function makeOutcome(stage, option, event, synergy) {
-    const name = game.heroName;
+    const name = heroDisplayName();
     const previous = game.log[game.log.length - 1];
     const primaryCareer = option.careers
       .slice()
@@ -1513,7 +1570,7 @@
       ? `あの頃の「${previous.choice}」で覚えた感覚が、時間をおいて胸の奥から戻ってきます。`
       : `${game.homeLabel}の毎日は狭くも温かく、外の世界への憧れを少しずつ育てていました。`;
     const eraLine = synergy
-      ? `街では「${event.title}」の話題が続き、${name}の背中を押すように空気がざわついていました。`
+      ? `街では「${event.title}」の話題が続き、${name}の選択にも少し追い風が吹いていました。`
       : `世の中では「${event.title}」が語られていましたが、${name}にとって大事だったのは目の前の小さな決断でした。`;
     const consequence = careerConsequences[primaryCareer] || "その小さな決断は、あとで思わぬ肩書きに姿を変えます。";
     const risk = option.risk || choiceRiskText(option, "pivot");
@@ -1526,7 +1583,7 @@
       consequence
     ].filter(Boolean);
     return {
-      title: synergy ? "時代の波に乗った" : "小さな決断が残った",
+      title: synergy ? "風向きが変わった" : "小さな決断が残った",
       text: fragments.join("\n\n")
     };
   }
@@ -1646,7 +1703,7 @@
     drawCinematicBackdrop(ctx, width, height, year, progress);
 
     ctx.fillStyle = "rgba(255,242,204,0.9)";
-    fillFittedText(ctx, `${year}年 / ${stage.label} / ${game.heroName}`, 24, 34, width * 0.72, 15);
+    fillFittedText(ctx, `${year}年 / ${stage.label} / ${heroDisplayName()}`, 24, 34, width * 0.72, 15);
     ctx.fillStyle = "rgba(244,194,96,0.18)";
     fillFittedText(ctx, String(year), width * 0.04, height * 0.52, width * 0.5, clamp(width * 0.16, 54, 118), 34, 900);
 
@@ -1666,7 +1723,7 @@
       ctx.fillStyle = "#fff1cc";
       fillFittedText(ctx, selectedOption.title, 40, height * 0.15 + 34, panelWidth - 36, 18);
       ctx.fillStyle = synergy ? "#f4c260" : "#9fe4dc";
-      fillFittedText(ctx, selectedOption.routeLabel || (synergy ? "時代の波に乗った" : "静かに分岐した"), 40, height * 0.15 + 62, panelWidth - 36, 13, 11, 900);
+      fillFittedText(ctx, selectedOption.routeLabel || (synergy ? "風向きが変わった" : "静かに分岐した"), 40, height * 0.15 + 62, panelWidth - 36, 13, 11, 900);
       ctx.fillStyle = "rgba(255,244,221,0.7)";
       fillFittedText(ctx, careerSummaryText(), 40, height * 0.15 + 84, panelWidth - 36, 12, 10, 800);
     }
